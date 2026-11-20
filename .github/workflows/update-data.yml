@@ -1,7 +1,7 @@
 name: Update index data
 on:
   schedule:
-    - cron: "30 21 * * *"   # 06:30 KST every day
+    - cron: "16 21 * * 0-5"   # 06:16 KST, Mon–Sat (no run on Sunday KST)
   workflow_dispatch:
 permissions:
   contents: write
