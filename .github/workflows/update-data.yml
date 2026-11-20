@@ -1,7 +1,7 @@
 name: Update index data
 on:
   schedule:
-    - cron: "16 21 * * 0-5"   # 06:16 KST, Mon–Sat (no run on Sunday KST)
+    - cron: "45 21 * * 0-5"   # 06:45 KST, Mon–Sat: FRED backup after the daily chart hand-off
   workflow_dispatch:
 permissions:
   contents: write

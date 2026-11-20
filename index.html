@@ -657,7 +657,7 @@ function drawChart(cv, s){
   c.textAlign = 'center'; c.fillText(dlabel(d[(d.length/2)|0][0], long), (L+Rr)/2, B+40);
   c.textAlign = 'right'; c.fillText(dlabel(d[d.length-1][0], long), Rr, B+40);
   c.textAlign = 'left'; c.fillStyle = '#9a9680'; c.font = '22px "Gowun Dodum",sans-serif';
-  c.fillText(`자료: FRED 일간 종가 · ${d[d.length-1][0]} 기준 (지연 데이터, 투자 권유 아님)`, 72, H-56);
+  c.fillText(`자료: 위즈덤투스 데일리차트 · FRED 일간 종가 · ${d[d.length-1][0]} 기준 (투자 권유 아님)`, 72, H-56);
 }
 const charts = [];
 function buildCharts(){
@@ -686,7 +686,7 @@ function buildCharts(){
 function redrawCharts(){ for (const ch of charts){ drawChart(ch.cv, ch.s); ch.tex.needsUpdate = true; } updateAsOf(); }
 function updateAsOf(){
   const a = MARKET.sp[MARKET.sp.length-1][0], b = MARKET.nq[MARKET.nq.length-1][0];
-  $('#asof').textContent = `FRED 일간 종가 · S&P ${a.slice(5).replace('-','.')} / NDX ${b.slice(5).replace('-','.')} 기준 (지연)`;
+  $('#asof').textContent = `일간 종가 · S&P ${a.slice(5).replace('-','.')} / NDX ${b.slice(5).replace('-','.')} 기준 (지연)`;
   document.querySelectorAll('#periods button').forEach(b => b.classList.toggle('on', b.dataset.p === period));
 }
 document.querySelectorAll('#periods button').forEach(b => b.addEventListener('click', () => { period = b.dataset.p; store.set('mk_period', period); redrawCharts(); }));

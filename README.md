@@ -3,5 +3,5 @@
 A calm 3D lakeside where visitors walk as the Wisdom Tooth character, share simple emotions, and see S&P 500 / NASDAQ 100 charts floating on the water.
 
 - Up to 50 people at once; everyone with the link sees each other (via public MQTT relays: broker.emqx.io, broker.hivemq.com).
-- `data.json` is refreshed at 06:16 KST, Monday–Saturday, by `.github/workflows/update-data.yml` (FRED daily closes, delayed).
+- `data.json`: the 위즈덤투스 daily chart task adds each trading day's S&P 500 / NASDAQ 100 closes (`scripts/add_close.py`); a GitHub Action backfills from FRED at 06:45 KST, Mon–Sat.
 - Music: original piano loop (`lake_piano.mp3`) rendered with the Salamander Grand Piano samples by Alexander Holm (CC BY 3.0).
