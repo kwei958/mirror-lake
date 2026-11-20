@@ -162,8 +162,8 @@
     <div id="fullMsg">호수가 만석입니다.<br>잠시 후 다시 방문해 주세요.</div>
     <button id="go" type="submit">호숫가로 들어가기</button>
     <div id="capNote"></div>
-    <p class="tip">방향키(또는 WASD)로 걷고, 숫자키 1–8로 마음을 표현해요.<br>잔잔한 피아노 음악이 흘러요 · 오른쪽 위 🔊로 끌 수 있어요.</p>
-    <p class="credit">음악: 위즈덤투스 오리지널 · 피아노 음색 Salamander Grand Piano (Alexander Holm, CC BY 3.0)</p>
+    <p class="tip">방향키(또는 WASD)로 걷고, 숫자키 1–8로 마음을 표현해요.<br>잔잔한 피아노곡 다섯 곡이 차례로 흘러요 · 오른쪽 위 🔊로 끌 수 있어요.</p>
+    <p class="credit">음악: 위즈덤투스 오리지널 피아노곡 5곡 · 피아노 음색 Salamander Grand Piano (Alexander Holm, CC BY 3.0)</p>
   </form>
 </div>
 
@@ -1146,34 +1146,44 @@ function syncRoom(list){
   } catch (e) { room = null; }
 })();
 
-// ---------------- music: original piano loop ----------------
+// ---------------- music: five original piano pieces, played in turn, forever ----------------
+const TRACKS = [
+  { src: 'lake_piano.mp3',   title: '명경지수' },
+  { src: 'lake_piano_2.mp3', title: '물안개 왈츠' },
+  { src: 'lake_piano_3.mp3', title: '달빛 호수' },
+  { src: 'lake_piano_4.mp3', title: '느린 걸음' },
+  { src: 'lake_piano_5.mp3', title: '새벽 물결' },
+];
 const Music = {
-  ctx: null, gain: null, on: store.get('mk_sound') !== 'off', loading: null, started: false,
-  load(){ if (!this.loading) this.loading = fetch('lake_piano.mp3').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null); return this.loading; },
-  async start(){
-    if (this.ctx){ if (this.on) this.ctx.resume?.(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ctx = this.ctx = new AC();
-    this.gain = ctx.createGain(); this.gain.gain.value = 0; this.gain.connect(ctx.destination);
-    if (!this.on) ctx.suspend?.();
-    const ab = await this.load(); if (!ab) return;
-    const buf = await new Promise((res) => ctx.decodeAudioData(ab.slice(0), res, () => res(null)));
-    if (!buf) return;
-    const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(this.gain); s.start();
-    this.started = true;
-    this.gain.gain.setTargetAtTime(this.on ? .85 : 0, ctx.currentTime, 1.5);
+  el: null, idx: 0, fadeT: null, on: store.get('mk_sound') !== 'off',
+  start(){
+    if (!this.el){
+      const a = this.el = new Audio(); a.preload = 'auto'; a.volume = 0;
+      a.addEventListener('ended', () => this.next());
+      a.addEventListener('error', () => setTimeout(() => this.next(), 1500));
+      this.setTrack(0);
+    }
+    if (this.on){ this.el.play().catch(() => {}); this.fadeTo(.85, 2500); }
+  },
+  setTrack(i){
+    this.idx = (i + TRACKS.length) % TRACKS.length;
+    this.el.src = TRACKS[this.idx].src;
+    $('#btnSound').title = `지금 흐르는 곡: ${TRACKS[this.idx].title}`;
+    if (this.on) toast(`♪ ${TRACKS[this.idx].title}`);
+  },
+  next(){ this.setTrack(this.idx + 1); if (this.on){ this.el.volume = .85; this.el.play().catch(() => {}); } },
+  fadeTo(v, ms){
+    clearInterval(this.fadeT); const a = this.el, v0 = a.volume, t0 = performance.now();
+    this.fadeT = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / ms); a.volume = v0 + (v - v0) * k; if (k >= 1){ clearInterval(this.fadeT); if (v === 0) a.pause(); } }, 50);
   },
   toggle(){
     this.on = !this.on; store.set('mk_sound', this.on ? 'on' : 'off');
-    if (this.ctx){
-      const ctx = this.ctx;
-      if (this.on){ ctx.resume?.(); this.gain.gain.setTargetAtTime(.85, ctx.currentTime, .5); }
-      else { this.gain.gain.setTargetAtTime(0, ctx.currentTime, .25); setTimeout(() => { if (!this.on) ctx.suspend?.(); }, 1000); }
-    } else if (this.on && state !== 'intro') this.start();
+    if (!this.el){ if (this.on && state !== 'intro') this.start(); }
+    else if (this.on){ this.el.play().catch(() => {}); this.fadeTo(.85, 800); }
+    else this.fadeTo(0, 500);
     $('#btnSound').textContent = this.on ? '🔊' : '🔇';
   }
 };
-Music.load();
 $('#btnSound').textContent = Music.on ? '🔊' : '🔇';
 $('#btnSound').addEventListener('click', () => Music.toggle());
 
