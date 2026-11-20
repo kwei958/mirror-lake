@@ -1,0 +1,20 @@
+name: Update index data
+on:
+  schedule:
+    - cron: "30 21 * * *"   # 06:30 KST every day
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/update_data.py
+      - run: |
+          if ! git diff --quiet -- data.json; then
+            git config user.name "lake-bot"
+            git config user.email "lake-bot@users.noreply.github.com"
+            git commit -am "Update index data $(date -u +%F)"
+            git push
+          fi
