@@ -4,4 +4,4 @@ A calm 3D lakeside where visitors walk as the Wisdom Tooth character, share simp
 
 - Up to 50 people at once; everyone with the link sees each other (via public MQTT relays: broker.emqx.io, broker.hivemq.com).
 - `data.json`: the 위즈덤투스 daily chart task adds each trading day's S&P 500 / NASDAQ 100 closes (`scripts/add_close.py`); a GitHub Action backfills from FRED at 06:45 KST, Mon–Sat.
-- Music: five original piano pieces (`lake_piano.mp3`, `lake_piano_2..5.mp3`) played in turn, rendered with the Salamander Grand Piano samples by Alexander Holm (CC BY 3.0).
+- Music: four original piano pieces (`lake_piano.mp3`, `lake_piano_3..5.mp3`) played in turn, rendered with the Salamander Grand Piano samples by Alexander Holm (CC BY 3.0).

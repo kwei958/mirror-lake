@@ -162,8 +162,8 @@
     <div id="fullMsg">호수가 만석입니다.<br>잠시 후 다시 방문해 주세요.</div>
     <button id="go" type="submit">호숫가로 들어가기</button>
     <div id="capNote"></div>
-    <p class="tip">방향키(또는 WASD)로 걷고, 숫자키 1–8로 마음을 표현해요.<br>잔잔한 피아노곡 다섯 곡이 차례로 흘러요 · 오른쪽 위 🔊로 끌 수 있어요.</p>
-    <p class="credit">음악: 위즈덤투스 오리지널 피아노곡 5곡 · 피아노 음색 Salamander Grand Piano (Alexander Holm, CC BY 3.0)</p>
+    <p class="tip">방향키(또는 WASD)로 걷고, 숫자키 1–8로 마음을 표현해요.<br>잔잔한 피아노곡 네 곡이 차례로 흘러요 · 오른쪽 위 🔊로 끌 수 있어요.</p>
+    <p class="credit">음악: 위즈덤투스 오리지널 피아노곡 4곡 · 피아노 음색 Salamander Grand Piano (Alexander Holm, CC BY 3.0)</p>
   </form>
 </div>
 
@@ -1146,10 +1146,9 @@ function syncRoom(list){
   } catch (e) { room = null; }
 })();
 
-// ---------------- music: five original piano pieces, played in turn, forever ----------------
+// ---------------- music: original piano pieces, played in turn, forever ----------------
 const TRACKS = [
   { src: 'lake_piano.mp3',   title: '명경지수' },
-  { src: 'lake_piano_2.mp3', title: '물안개 왈츠' },
   { src: 'lake_piano_3.mp3', title: '달빛 호수' },
   { src: 'lake_piano_4.mp3', title: '느린 걸음' },
   { src: 'lake_piano_5.mp3', title: '새벽 물결' },
