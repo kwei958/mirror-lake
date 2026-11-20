@@ -598,8 +598,8 @@ function buildSigns(){
 
 // ---------------- index charts floating on the lake ----------------
 const SERIES = [
-  { name:'S&P 500', sub:'미국 대형주 500', data: MARKET.sp },
-  { name:'NASDAQ 100', sub:'나스닥 대형 비금융 100', data: MARKET.nq }
+  { name:'S&P 500', sub:'미국 대형주 500', get data(){ return MARKET.sp; } },
+  { name:'NASDAQ 100', sub:'나스닥 대형 비금융 100', get data(){ return MARKET.nq; } }
 ];
 const PERIODS = { '1M':[22,'1개월'], '3M':[63,'3개월'], '6M':[126,'6개월'], '1Y':[9999,'1년'] };
 let period = store.get('mk_period') || '3M';
