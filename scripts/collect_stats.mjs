@@ -6,9 +6,9 @@ import fs from 'node:fs';
 const ROOT = 'wisdomtooth/mkjs-lake/v1';
 const BROKERS = (process.env.BROKERS || 'mqtts://broker.emqx.io:8883,mqtts://broker.hivemq.com:8883').split(',');
 const now0 = Date.now();
-// run until just before the next 4-hour slot (00/04/08/12/16/20 UTC + 5 min), at most 236 minutes
-const next = new Date(now0); next.setUTCMinutes(5, 0, 0);
-while (next.getTime() <= now0 + 10 * 60000 || next.getUTCHours() % 4 !== 0) next.setUTCHours(next.getUTCHours() + 1);
+// run until just before the next 4-hour slot, aligned to Korean midnight (KST 00/04/08/12/16/20 = UTC 15/19/23/03/07/11), at most 236 minutes
+const next = new Date(now0); next.setUTCMinutes(0, 0, 0);
+while (next.getTime() <= now0 + 10 * 60000 || next.getUTCHours() % 4 !== 3) next.setUTCHours(next.getUTCHours() + 1);
 const endAt = Math.min(next.getTime() - 2 * 60000, now0 + (+process.env.DURATION_MIN || 236) * 60000);
 
 const views = new Set();

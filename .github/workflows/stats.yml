@@ -1,7 +1,7 @@
 name: Visitor stats
 on:
   schedule:
-    - cron: "7 */4 * * *"   # every 4 hours (KST 01:07, 05:07, 09:07, 13:07, 17:07, 21:07)
+    - cron: "5 3-23/4 * * *"   # safety net if the chain breaks (KST 00:05, 04:05, 08:05, 12:05, 16:05, 20:05)
   workflow_dispatch:
 permissions:
   contents: write
