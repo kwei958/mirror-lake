@@ -114,10 +114,24 @@
     #brand h1 small{display:none}
     #tools .seg span{display:none}
     #asof{display:none}
-    #emotes{bottom:10px}
-    .emo{min-width:50px;padding:5px 5px 4px}
+    /* phones: emotions in a 4x2 grid, meditation as its own round button above it */
+    #emotes{bottom:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:6px;width:calc(100vw - 24px);max-width:420px;overflow:visible}
+    .emo{min-width:0;padding:4px 2px 3px}
+    .emo b{font-size:21px}
     .emo kbd{display:none}
-    #joy{bottom:92px}
+    #joy{bottom:128px}
+    #quoteWrap{bottom:236px}
+  }
+  #zenFloat{display:none}
+  @media (max-width:640px){
+    #emotes .emo.zen{display:none}
+    #zenFloat{display:flex;position:fixed;right:14px;bottom:134px;z-index:6;width:74px;height:74px;border-radius:50%;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+      border:1px solid var(--line);background:var(--paper2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:var(--shadow);color:var(--ink);padding:0;transition:transform .15s, background .3s}
+    #zenFloat b{font-size:26px;line-height:1;font-weight:400}
+    #zenFloat em{font-style:normal;font-size:12px;color:var(--ink2)}
+    #zenFloat:active{transform:scale(.94)}
+    #zenFloat.on{background:var(--ink)}
+    #zenFloat.on em{color:#f3ead0}
   }
 </style>
 <script type="importmap">
@@ -969,6 +983,9 @@ addEventListener('blur', () => keys.clear());
   });
   const z = document.createElement('button'); z.className = 'emo zen'; z.id = 'btnZen'; z.title = '명상 (M)';
   z.innerHTML = `<b>🧘</b><em>명상</em><kbd>M</kbd>`; z.addEventListener('click', () => toggleZen()); bar.appendChild(z);
+  // phones: the same meditation button, as a round button that is always in reach
+  const zf = document.createElement('button'); zf.id = 'zenFloat'; zf.title = '명상';
+  zf.innerHTML = `<b>🧘</b><em>명상</em>`; zf.addEventListener('click', () => toggleZen()); document.body.appendChild(zf);
 }
 let lastEmoteAt = 0, emoteStamp = 0, emoteKey = '';
 function doEmote(k){
@@ -1001,7 +1018,7 @@ function showQuote(i){
 }
 let zenT = 0, zenQ = 0, zenNext = 30, zenStart = 0;
 function setZen(on){
-  if (!me) return; me.sit = on || !!bench; document.body.classList.toggle('zen', on); $('#btnZen').classList.toggle('on', on);
+  if (!me) return; me.sit = on || !!bench; document.body.classList.toggle('zen', on); $('#btnZen').classList.toggle('on', on); $('#zenFloat').classList.toggle('on', on);
   if (on){ zenT = 0; zenStart = performance.now(); zenNext = 30; zenQ = Math.floor(Math.random()*QUOTES.length); showQuote(zenQ); }
 }
 function toggleZen(){ if (me && state === 'play') setZen(!document.body.classList.contains('zen')); }
