@@ -20,8 +20,10 @@
   .hud{position:fixed;z-index:5;pointer-events:none;transition:opacity .8s ease}
   .hud > *{pointer-events:auto}
   .card{background:var(--paper);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
-  body.zen .hud.fadeable{opacity:.12}
-  body.zen .hud.fadeable:hover{opacity:1}
+  body.zen .hud.fadeable, body.bench .hud.fadeable{opacity:.12}
+  body.zen .hud.fadeable:hover, body.bench .hud.fadeable:hover{opacity:1}
+  body.bench #emotes{opacity:.35}
+  body.bench #emotes:hover{opacity:1}
 
   /* top-left */
   #brand{top:14px;left:14px;padding:12px 16px 11px;min-width:210px}
@@ -219,8 +221,8 @@ $('#app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const FOG = new THREE.Color(0xeadcaa);
-scene.fog = new THREE.Fog(FOG, 48, 150);
-const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 500);
+scene.fog = new THREE.Fog(FOG, 95, 320);
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 900);
 camera.position.set(0, 7, 44);
 
 const timeU = { value: 0 };
@@ -251,11 +253,11 @@ const SUN_OFF = new THREE.Vector3(-14, 42, -46);
         #include <colorspace_fragment>
       }`
   });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(220, 32, 20), mat));
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(480, 32, 20), mat));
 }
 
 // backdrop: the 명경지수 painting wrapped around the far north shore
-const BACK_R = 94, BACK_ARC = THREE.MathUtils.degToRad(132);
+const BACK_R = 182, BACK_ARC = THREE.MathUtils.degToRad(132);
 {
   const img = new Image();
   img.onload = () => {
@@ -273,7 +275,7 @@ const BACK_R = 94, BACK_ARC = THREE.MathUtils.degToRad(132);
     const h = BACK_R*BACK_ARC / (img.width/img.height);
     const geo = new THREE.CylinderGeometry(BACK_R, BACK_R, h, 72, 1, true, Math.PI - BACK_ARC/2, BACK_ARC);
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map:tex, transparent:true, side:THREE.BackSide, fog:false, depthWrite:false, toneMapped:false }));
-    m.position.y = h/2 - 5; m.renderOrder = -1;
+    m.position.y = h/2 - 9; m.renderOrder = -1;
     scene.add(m);
   };
   img.src = 'backdrop.jpg';
@@ -321,11 +323,13 @@ function glowTexture(){
 const GLOW = glowTexture();
 
 // ---------------- world layout ----------------
-const lakeR = th => 20 + 1.5*Math.sin(3*th) + 1.0*Math.cos(5*th+1);
+const lakeR = th => 2*(20 + 1.5*Math.sin(3*th) + 1.0*Math.cos(5*th+1));   // twice the original lake
 const lakePts = (off=0, n=200) => { const p=[]; for (let i=0;i<n;i++){ const th=i/n*Math.PI*2, r=lakeR(th)+off; p.push(new THREE.Vector2(Math.cos(th)*r, -Math.sin(th)*r)); } return p; };
 const colliders = [];
-const PAV = { x: 30, z: -3 };
-const onPier = (x,z) => (Math.abs(x) < 1.2 && z > 8.6 && z < 21) || (Math.abs(x) < 2.25 && z > 7.0 && z < 9.6);
+const PAV = { x: 60, z: -6 };
+const DECK = { x: 0, z: 3, r: 4.6 };                         // round deck in the middle of the lake
+const BENCH = { z: 3.6, seats: [-1.25, 0, 1.25], seatY: 0.54 }; // a bench for three, facing the far shore
+const onPier = (x,z) => (Math.abs(x) < 1.2 && z > 7.2 && z < 38.5) || Math.hypot(x-DECK.x, z-DECK.z) < DECK.r - .15;
 const inPav = (x,z) => Math.abs(x-PAV.x) < 3.4 && Math.abs(z-PAV.z) < 2.9;
 
 const natureMat = new THREE.MeshStandardMaterial({ vertexColors:true, flatShading:true, roughness:.92, metalness:0 });
@@ -344,7 +348,7 @@ const glowMat = new THREE.MeshBasicMaterial({ vertexColors:true, toneMapped:fals
 
 // ground
 {
-  const shape = new THREE.Shape(); shape.absarc(0,0,96,0,Math.PI*2,false);
+  const shape = new THREE.Shape(); shape.absarc(0,0,190,0,Math.PI*2,false);
   shape.holes.push(new THREE.Path(lakePts(0)));
   const geo = new THREE.ShapeGeometry(shape, 72);
   const tex = noiseTex('#86a052', ['#6c8d43','#97ae5d','#7a9849','#a9b866','#5f7f3c','#b8b56a'], 9000, 512, 1);
@@ -353,11 +357,11 @@ const glowMat = new THREE.MeshBasicMaterial({ vertexColors:true, toneMapped:fals
   m.rotation.x = -Math.PI/2; m.receiveShadow = true; scene.add(m);
   // path ring
   const ptex = noiseTex('#d4c394', ['#bfae80','#e2d5ab','#c9b88a','#a89a76'], 7000, 512, 1);
-  ptex.repeat.set(9, 9);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(23.4, 25.8, 180, 1), new THREE.MeshStandardMaterial({ map:ptex, roughness:1, polygonOffset:true, polygonOffsetFactor:-2 }));
+  ptex.repeat.set(18, 18);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(46.8, 51.6, 360, 1), new THREE.MeshStandardMaterial({ map:ptex, roughness:1, polygonOffset:true, polygonOffsetFactor:-2 }));
   ring.rotation.x = -Math.PI/2; ring.position.y = 0.012; ring.receiveShadow = true; scene.add(ring);
   // lake bed (seen at grazing edges)
-  const bed = new THREE.Mesh(new THREE.CircleGeometry(24, 48), new THREE.MeshBasicMaterial({ color:0x3b5136 }));
+  const bed = new THREE.Mesh(new THREE.CircleGeometry(50, 64), new THREE.MeshBasicMaterial({ color:0x3b5136 }));
   bed.rotation.x = -Math.PI/2; bed.position.y = -0.6; scene.add(bed);
 }
 
@@ -423,40 +427,40 @@ function addPine(x, z, s=1){
 }
 const clearOf = (x,z) => {
   const d = Math.hypot(x,z);
-  if (d > 22.8 && d < 26.6) return false;             // keep path clear
-  if (Math.abs(x) < 7 && z > 17) return false;       // spawn corridor & camera
+  if (d > 45.6 && d < 53.2) return false;             // keep path clear
+  if (Math.abs(x) < 8 && z > 34) return false;       // spawn corridor & camera
   if (Math.hypot(x-PAV.x, z-PAV.z) < 7) return false;
-  if (Math.hypot(x+3.4, z-24.6) < 2) return false;
+  if (Math.hypot(x+3.6, z-54) < 2.5) return false;
   return true;
 };
 // shore & meadow trees
-for (let i=0;i<120;i++){
-  const th = R(0, Math.PI*2), d = R(27.5, 58);
+for (let i=0;i<200;i++){
+  const th = R(0, Math.PI*2), d = R(54, 112);
   const x = Math.cos(th)*d, z = Math.sin(th)*d;
   const north = Math.abs(((th + Math.PI/2 + Math.PI*3) % (Math.PI*2)) - Math.PI) < 0.95;
   if (!clearOf(x,z)) continue;
-  if (north && d < 44 && srand() < .75) continue;
+  if (north && d < 88 && srand() < .75) continue;
   if (srand() < .3) addPine(x, z, R(.9,1.4) * (north ? .9 : 1)); else addTree(x, z, R(.9,1.5) * (north ? .85 : 1));
 }
-addTree(-15, 27, 1.9); addTree(-29, 9, 1.7); addTree(17.5, 29, 1.6); addTree(-9, 31, 1.4);
+addTree(-30, 56, 1.9); addTree(-58, 18, 1.7); addTree(35, 58, 1.6); addTree(-18, 62, 1.4);
 // far hills where the painting does not reach
 for (let i=0;i<22;i++){
-  const th = R(-0.55, 3.69), d = R(74, 88);
-  nature.add(new THREE.IcosahedronGeometry(R(10,19), 1), [Math.cos(th)*d, -3, Math.sin(th)*d], [R(0,3),R(0,3),0], [1, R(.38,.6), 1], SP(['#6f8c66','#7f9b70','#88a275','#6a8660']));
+  const th = R(-0.55, 3.69), d = R(150, 172);
+  nature.add(new THREE.IcosahedronGeometry(R(18,34), 1), [Math.cos(th)*d, -5, Math.sin(th)*d], [R(0,3),R(0,3),0], [1, R(.38,.6), 1], SP(['#6f8c66','#7f9b70','#88a275','#6a8660']));
 }
-for (const th of [-0.45,-0.25,-2.7,-2.9]){ for (let k=0;k<4;k++){ const d=R(62,80); addPine(Math.cos(th+R(-.08,.08))*d, Math.sin(th+R(-.08,.08))*d, R(2,3)); } }
+for (const th of [-0.45,-0.25,-2.7,-2.9]){ for (let k=0;k<4;k++){ const d=R(125,162); addPine(Math.cos(th+R(-.06,.06))*d, Math.sin(th+R(-.06,.06))*d, R(3,4.5)); } }
 // rim stones
-for (let i=0;i<190;i++){
-  const th = i/190*Math.PI*2 + R(-.01,.01);
-  if (Math.abs(th - Math.PI/2) < 0.09) continue;
+for (let i=0;i<380;i++){
+  const th = i/380*Math.PI*2 + R(-.005,.005);
+  if (Math.abs(th - Math.PI/2) < 0.045) continue;
   const r = lakeR(th) + R(-.15,.35), s = R(.22,.62);
   nature.add(new THREE.DodecahedronGeometry(s, 0), [Math.cos(th)*r, R(-.08,.06), Math.sin(th)*r], [R(0,3),R(0,3),R(0,3)], [1, R(.45,.7), 1], SP(['#a39a86','#8f8a7c','#b5ab94','#7d7a6e','#9c9583']));
 }
 // lily pads & lotus
-for (let i=0;i<46;i++){
-  const th = R(0, Math.PI*2), d = R(11, lakeR(th)-1.2);
+for (let i=0;i<120;i++){
+  const th = R(0, Math.PI*2), d = R(12, lakeR(th)-1.5);
   const x = Math.cos(th)*d, z = Math.sin(th)*d;
-  if (Math.abs(x) < 11 && z > -3 && z < 22) continue;
+  if (Math.abs(x) < 15 && z > -26 && z < 40) continue;
   nature.add(new THREE.CylinderGeometry(.55,.55,.04,12, 1, false, 0, Math.PI*1.85), [x, -0.04, z], [0,R(0,6),0], R(.6,1.2), SP(['#5d8a3c','#6c9a43','#4f7b34']));
   if (srand() < .22){
     for (let k=0;k<7;k++){ const a=k/7*Math.PI*2; nature.add(new THREE.SphereGeometry(.13, 6, 4), [x+Math.cos(a)*.13, .1, z+Math.sin(a)*.13], [Math.sin(a)*.8,0,-Math.cos(a)*.8], [1,2.2,.7], SP(['#f3b8c8','#f7cad5','#eea6ba'])); }
@@ -464,16 +468,30 @@ for (let i=0;i<46;i++){
   }
 }
 // pier
-for (let z = 7.15; z < 21; z += 0.42){
-  const wide = z < 9.6;
-  nature.add(new THREE.BoxGeometry(wide ? 4.6 : 2.5, .1, .37), [0, .15, z], [0, R(-.01,.01), 0], 1, SP(['#8b6a45','#7d5e3c','#96744c','#866443']));
+for (let z = 7.2; z < 38.5; z += 0.42){
+  nature.add(new THREE.BoxGeometry(2.5, .1, .37), [0, .15, z], [0, R(-.01,.01), 0], 1, SP(['#8b6a45','#7d5e3c','#96744c','#866443']));
 }
-for (let z = 7.3; z < 20; z += 2.3){ for (const sx of [-1,1]){ const w = z < 9.6 ? 2.32 : 1.3; nature.add(new THREE.CylinderGeometry(.11,.12,1.3,7), [sx*w, -.45, z], null, 1, '#5c4430'); } }
-for (const sx of [-1,1]) nature.add(new THREE.BoxGeometry(.12,.12,4.6), [sx*2.3,.62,8.3], [0,Math.PI/2*0,0], [1,1,0.5], '#6e5236');
+for (let z = 8.6; z < 37; z += 2.4){ for (const sx of [-1,1]) nature.add(new THREE.CylinderGeometry(.11,.12,1.3,7), [sx*1.3, -.45, z], null, 1, '#5c4430'); }
+// round deck in the middle of the lake
+nature.add(new THREE.CylinderGeometry(DECK.r, DECK.r, .16, 28), [DECK.x, .12, DECK.z], null, 1, '#866443');
+for (let k=-4; k<=4; k++){ const w = 2*Math.sqrt(Math.max(0, DECK.r*DECK.r - k*k)) - .3; if (w > .6) nature.add(new THREE.BoxGeometry(w, .02, .05), [DECK.x, .205, DECK.z + k], null, 1, '#6e5236'); }
+for (let k=0; k<12; k++){ const a = k/12*Math.PI*2; nature.add(new THREE.CylinderGeometry(.13,.14,1.4,7), [DECK.x + Math.cos(a)*(DECK.r-.3), -.5, DECK.z + Math.sin(a)*(DECK.r-.3)], null, 1, '#5c4430'); }
+// the bench (three seats), facing north across the water
+{
+  const bz = BENCH.z, wood = '#7a5634', dark = '#5e4229';
+  for (const dz of [-.2, 0, .2]) nature.add(new THREE.BoxGeometry(3.9, .07, .18), [0, .74, bz + dz], null, 1, wood);
+  for (const dy of [.95, 1.17, 1.39]) nature.add(new THREE.BoxGeometry(3.9, .14, .06), [0, dy, bz + .36 + (dy - .95) * .18], [.18, 0, 0], 1, wood);
+  for (const sx of [-1.75, 1.75]){
+    for (const dz of [-.24, .26]) nature.add(new THREE.BoxGeometry(.1, .56, .1), [sx, .47, bz + dz], null, 1, dark);
+    nature.add(new THREE.BoxGeometry(.1, .8, .1), [sx, 1.1, bz + .38], [.18, 0, 0], 1, dark);
+    nature.add(new THREE.BoxGeometry(.12, .07, .62), [sx * 1.08, 1.02, bz + .03], null, 1, dark);
+    nature.add(new THREE.BoxGeometry(.08, .28, .08), [sx * 1.08, .86, bz - .22], null, 1, dark);
+  }
+}
 
 // stone lanterns
-const lanternSpots = [[-2.7,21.6],[2.7,21.6]];
-for (const a of [0.2, 0.9, 1.75, 2.45, 3.1, 3.8, 4.5, 5.6]){ const r = 26.4; lanternSpots.push([Math.cos(a)*r, Math.sin(a)*r]); }
+const lanternSpots = [[-2.7,39.5],[2.7,39.5]];
+for (const a of [0.05, 0.55, 1.05, 1.8, 2.3, 2.8, 3.3, 3.8, 4.3, 4.8, 5.3, 5.8]){ const r = 52.8; lanternSpots.push([Math.cos(a)*r, Math.sin(a)*r]); }
 for (const [x,z] of lanternSpots){
   nature.add(new THREE.BoxGeometry(.75,.28,.75), [x,.14,z], null, 1, '#9b9483');
   nature.add(new THREE.CylinderGeometry(.13,.17,.9,6), [x,.73,z], null, 1, '#a59e8b');
@@ -485,7 +503,7 @@ for (const [x,z] of lanternSpots){
   sp.position.set(x,1.47,z); sp.scale.set(1.8,1.8,1); scene.add(sp);
   colliders.push({ x, z, r:.5 });
 }
-for (const sx of [-1,1]){ const l = new THREE.PointLight(0xffc878, 8, 9, 2); l.position.set(sx*2.7, 1.6, 21.6); scene.add(l); }
+for (const sx of [-1,1]){ const l = new THREE.PointLight(0xffc878, 8, 9, 2); l.position.set(sx*2.7, 1.6, 39.5); scene.add(l); }
 
 // pavilion 靜心齋
 {
@@ -537,14 +555,14 @@ scene.add(roofB.build(roofMat));
        transformed.x += sin(uTime*1.7 + ph) * (0.05 + 0.16*uWind) * position.y;
        transformed.z += cos(uTime*1.3 + ph) * 0.05 * position.y;`);
   };
-  const N = 3600, im = new THREE.InstancedMesh(blade, mat, N);
+  const N = 7200, im = new THREE.InstancedMesh(blade, mat, N);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
   const G = ['#86ab4f','#9bb85a','#7aa047','#aec266','#b9c56c'];
   let k = 0;
   while (k < N){
-    const th = R(0,Math.PI*2), d = R(lakeR(th)+.8, 52);
+    const th = R(0,Math.PI*2), d = R(lakeR(th)+.8, 104);
     const x = Math.cos(th)*d, z = Math.sin(th)*d;
-    if (d > 23.2 && d < 26) continue;
+    if (d > 46.4 && d < 52) continue;
     if (onPier(x,z) || inPav(x,z) || Math.hypot(x-PAV.x,z-PAV.z) < 4) continue;
     e.set(R(-.25,.25), R(0,6), R(-.25,.25)); q.setFromEuler(e);
     const s = R(.5,1.15);
@@ -552,9 +570,9 @@ scene.add(roofB.build(roofMat));
     im.setMatrixAt(k, m4); im.setColorAt(k, col.set(SP(G))); k++;
   }
   im.receiveShadow = true; scene.add(im);
-  const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(.07, 6, 4), new THREE.MeshStandardMaterial({ roughness:.8 }), 260);
-  for (let i=0;i<260;i++){
-    let x,z,d,th; do { th=R(0,Math.PI*2); d=R(lakeR(th)+1,46); x=Math.cos(th)*d; z=Math.sin(th)*d; } while ((d>23.2&&d<26) || inPav(x,z));
+  const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(.07, 6, 4), new THREE.MeshStandardMaterial({ roughness:.8 }), 520);
+  for (let i=0;i<520;i++){
+    let x,z,d,th; do { th=R(0,Math.PI*2); d=R(lakeR(th)+1,92); x=Math.cos(th)*d; z=Math.sin(th)*d; } while ((d>46.4&&d<52) || inPav(x,z));
     m4.compose(new THREE.Vector3(x, R(.2,.4), z), q.identity(), new THREE.Vector3(1,1,1));
     fl.setMatrixAt(i, m4); fl.setColorAt(i, col.set(SP(['#f4e3a1','#fff6e0','#f2c6d2','#e8d27a'])));
   }
@@ -596,8 +614,8 @@ function buildSigns(){
     new THREE.MeshStandardMaterial({ map:t2, roughness:.85 }), new THREE.MeshStandardMaterial({ color:0x6b4a2e })]);
   board.position.y = 1.55; board.castShadow = true; g.add(board);
   for (const sx of [-1,1]){ const p = new THREE.Mesh(new THREE.CylinderGeometry(.06,.07,1.6,6), new THREE.MeshStandardMaterial({ color:0x5b432c })); p.position.set(sx*.95,.8,-.06); p.castShadow = true; g.add(p); }
-  g.position.set(-3.4, 0, 24.6); g.rotation.y = 0.35; scene.add(g);
-  colliders.push({ x:-3.4, z:24.6, r:1.1 });
+  g.position.set(-3.6, 0, 54); g.rotation.y = 0.35; scene.add(g);
+  colliders.push({ x:-3.6, z:54, r:1.1 });
 }
 
 // ---------------- index charts floating on the lake ----------------
@@ -670,7 +688,7 @@ function buildCharts(){
     drawChart(cv, s);
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const g = new THREE.Group();
-    const W = 8.4, H = W*860/1400;
+    const W = 12.6, H = W*860/1400;
     const front = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map:tex, transparent:true, toneMapped:false, fog:false }));
     const back = new THREE.Mesh(new THREE.PlaneGeometry(W*.985, H*.98), new THREE.MeshStandardMaterial({ color:0xe9dfc2, roughness:1 }));
     back.rotation.y = Math.PI; back.position.z = -.01;
@@ -680,10 +698,10 @@ function buildCharts(){
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,W+.5,10), rodM); rod.rotation.z = Math.PI/2; rod.position.y = sy*(H/2+.02); g.add(rod);
       for (const sx of [1,-1]){ const cap = new THREE.Mesh(new THREE.SphereGeometry(.14,10,8), new THREE.MeshStandardMaterial({ color:0xb8913a, roughness:.4, metalness:.3 })); cap.position.set(sx*(W/2+.27), sy*(H/2+.02), 0); g.add(cap); }
     }
-    const sx = i === 0 ? -4.75 : 4.75;
-    g.position.set(sx, 4.05, 2.2); g.rotation.y = i === 0 ? 0.12 : -0.12;
+    const sx = i === 0 ? -7.1 : 7.1;
+    g.position.set(sx, 5.6, -16); g.rotation.y = i === 0 ? 0.12 : -0.12;
     scene.add(g);
-    charts.push({ g, cv, tex, s, baseY: 4.05, ph: i*1.7 });
+    charts.push({ g, cv, tex, s, baseY: 5.6, ph: i*1.7 });
   });
   updateAsOf();
 }
@@ -697,8 +715,8 @@ document.querySelectorAll('#periods button').forEach(b => b.addEventListener('cl
 
 // ---------------- fireflies & falling leaves ----------------
 const flies = (() => {
-  const N = 140, pos = new Float32Array(N*3), base = [];
-  for (let i=0;i<N;i++){ const th = Math.random()*Math.PI*2, d = 17 + Math.random()*24; base.push([Math.cos(th)*d, .4+Math.random()*2.6, Math.sin(th)*d, Math.random()*10]); }
+  const N = 220, pos = new Float32Array(N*3), base = [];
+  for (let i=0;i<N;i++){ const th = Math.random()*Math.PI*2, d = 34 + Math.random()*48; base.push([Math.cos(th)*d, .4+Math.random()*2.6, Math.sin(th)*d, Math.random()*10]); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size:.32, map:GLOW, color:0xffe39a, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:.9 }));
   scene.add(pts);
@@ -827,7 +845,7 @@ class Avatar {
   }
   setName(n){ if (n === this.name) return; this.name = n; this.tag.material.map.dispose(); this.tag.material.map = makeTagTexture(n, this.me); this.tag.material.needsUpdate = true; }
   setColor(ci){ if (ci === this.ci) return; this.ci = ci; this.parts.capeMat.color.setHex(CAPES[ci] ?? CAPES[0]); }
-  playEmote(k){ if (!EMO[k]) return; this.emote = k; this.et = 0; this.bubble.material.map = getBubble(k); this.bubble.material.needsUpdate = true; if (k !== 'calm') this.sit = false; }
+  playEmote(k){ if (!EMO[k]) return; this.emote = k; this.et = 0; this.bubble.material.map = getBubble(k); this.bubble.material.needsUpdate = true; }
   update(dt, t){
     const P = this.parts, moving = this.speed > .3;
     this.walk += dt * (moving ? 3 + this.speed*1.6 : 0);
@@ -883,14 +901,14 @@ const wind = { level:.35, target:.35, next:2 };
 
 // ---------------- player & input ----------------
 let me = null, state = 'intro';
-const player = { x: 0, z: 27.5, y: 0, vy: 0 };
+const player = { x: 0, z: 55, y: 0, vy: 0 };
 let myName = store.get('mk_name') || '', myColor = parseInt(store.get('mk_color') || '0', 10) || 0;
 let camYaw = 0, camPitch = .3, camDist = 9.5;
 const keys = new Set();
 const joy = { x:0, y:0 };
 
 function groundAt(x, z){
-  const d = Math.hypot(x,z); if (d > 52) return null;
+  const d = Math.hypot(x,z); if (d > 104) return null;
   if (onPier(x,z)) return .2;
   if (d < lakeR(Math.atan2(z,x)) + .55) return null;
   for (const c of colliders){ const dx = x-c.x, dz = z-c.z; if (dx*dx + dz*dz < (c.r+.32)*(c.r+.32)) return null; }
@@ -918,7 +936,7 @@ addEventListener('blur', () => keys.clear());
   el.addEventListener('pointerdown', e => { drag = { x:e.clientX, y:e.clientY, id:e.pointerId }; el.setPointerCapture(e.pointerId); });
   el.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; camYaw -= (e.clientX-drag.x)*.006; camPitch = clamp(camPitch + (e.clientY-drag.y)*.004, .04, 1.25); drag.x = e.clientX; drag.y = e.clientY; });
   const end = () => drag = null; el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-  el.addEventListener('wheel', e => { e.preventDefault(); camDist = clamp(camDist + e.deltaY*.01, 4, 20); }, { passive:false });
+  el.addEventListener('wheel', e => { e.preventDefault(); camDist = clamp(camDist + e.deltaY*.01, 4, 26); }, { passive:false });
 }
 // touch joystick
 {
@@ -972,10 +990,47 @@ function showQuote(i){
 }
 let zenT = 0, zenQ = 0, zenNext = 30, zenStart = 0;
 function setZen(on){
-  if (!me) return; me.sit = on; document.body.classList.toggle('zen', on); $('#btnZen').classList.toggle('on', on);
+  if (!me) return; me.sit = on || !!bench; document.body.classList.toggle('zen', on); $('#btnZen').classList.toggle('on', on);
   if (on){ zenT = 0; zenStart = performance.now(); zenNext = 30; zenQ = Math.floor(Math.random()*QUOTES.length); showQuote(zenQ); }
 }
-function toggleZen(){ if (me && state === 'play') setZen(!me.sit); }
+function toggleZen(){ if (me && state === 'play') setZen(!document.body.classList.contains('zen')); }
+
+// ---------------- the bench: walk up to it and you sit down; move the cursor to stand ----------------
+let bench = null, benchArmed = true;
+const inBenchZone = (x, z) => Math.abs(x - DECK.x) < 2.3 && Math.abs(z - BENCH.z) < 1.1;
+function benchSeatsTaken(){
+  const s = new Set();
+  for (const r of remote.values()){ const b = r.pr && r.pr.b; if (Number.isInteger(b) && b >= 0 && b < BENCH.seats.length) s.add(b); }
+  return s;
+}
+function sitOnBench(){
+  const taken = benchSeatsTaken();
+  const free = BENCH.seats.map((_, i) => i).filter(i => !taken.has(i)).sort((a, b) => Math.abs(BENCH.seats[a] - player.x) - Math.abs(BENCH.seats[b] - player.x));
+  if (!free.length){ benchArmed = false; toast('벤치가 가득 찼어요'); return; }
+  const i = free[0];
+  bench = { seat: i, t0: performance.now(), moved: 0, lx: null, ly: null, released: false };
+  player.x = DECK.x + BENCH.seats[i]; player.z = BENCH.z - .05; me.heading = Math.PI; me.speed = 0; me.sit = true;
+  document.body.classList.add('bench');
+  toast('벤치에 앉았어요 · 커서를 움직이면 일어나요');
+  lastSent = ''; sendPresence(true);
+}
+function standFromBench(){
+  if (!bench) return;
+  player.x = DECK.x + BENCH.seats[bench.seat]; player.z = BENCH.z + 1.5; player.y = .2;
+  bench = null; benchArmed = false;
+  me.sit = document.body.classList.contains('zen');
+  document.body.classList.remove('bench');
+  lastSent = ''; sendPresence(true);
+}
+addEventListener('pointermove', e => {
+  if (!bench) return;
+  if (performance.now() - bench.t0 < 1500 || bench.lx === null){ bench.lx = e.clientX; bench.ly = e.clientY; return; }
+  bench.moved += Math.hypot(e.clientX - bench.lx, e.clientY - bench.ly); bench.lx = e.clientX; bench.ly = e.clientY;
+  if (bench.moved > 40) standFromBench();
+});
+renderer.domElement.addEventListener('pointerdown', e => {   // touch screens have no cursor: a tap stands you up
+  if (bench && e.pointerType !== 'mouse' && performance.now() - bench.t0 > 1500) standFromBench();
+});
 
 // toast
 let toastTimer = 0;
@@ -1021,7 +1076,7 @@ const NET = {
 let room = null; const others = new Map(); let lastSent = '', lastSendT = 0, lastBeat = 0;
 const remote = new Map();   // key -> { pr, seen, t }
 function myPresence(){
-  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, e: emoteKey, et: emoteStamp, jt: NET.jt };
+  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, b: bench ? bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
 }
 function sendPresence(force){
   if (!me || state === 'intro' || !NET.entered) return;
@@ -1080,7 +1135,7 @@ function checkOverflow(){
   if (!NET.entered || performance.now() - NET.enteredAt < 3500) return;
   const list = activeList(), rank = list.findIndex(x => x.k === 'me');
   if (rank >= CAP){
-    leaveLake(); state = 'intro'; setZen(false);
+    leaveLake(); state = 'intro'; bench = null; document.body.classList.remove('bench'); setZen(false);
     if (me){ me.dispose(); me = null; }
     $('#go').textContent = '호숫가로 들어가기';
     $('#entry').classList.remove('hide');
@@ -1237,7 +1292,11 @@ function frame(){
     const m = Math.hypot(ix, iz); if (m > 1){ ix /= m; iz /= m; }
     const run = keys.has('Shift') || Math.hypot(joy.x, joy.y) > .95;
     const spd = (run ? 7.5 : 4.2) * Math.min(1, m);
-    if (m > .08){
+    if (bench){
+      // keys/joystick stand you up too, but only a fresh press (not the one that walked you here)
+      if (m <= .08) bench.released = true; else if (bench.released) standFromBench();
+      me.speed = 0;
+    } else if (m > .08){
       if (me.sit) setZen(false);
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
       let dx = (fx*iz + rx*ix), dz = (fz*iz + rz*ix); const dl = Math.hypot(dx,dz) || 1; dx /= dl; dz /= dl;
@@ -1247,30 +1306,40 @@ function frame(){
       if (groundAt(player.x, nz) !== null){ moved += Math.abs(nz-player.z); player.z = nz; }
       me.heading = Math.atan2(dx, dz);
       me.speed = moved > 0.0001 ? spd : 0;
+      if (!benchArmed && !inBenchZone(player.x, player.z)) benchArmed = true;
+      if (benchArmed && inBenchZone(player.x, player.z)) sitOnBench();
     } else me.speed = 0;
   } else if (me) me.speed = 0;
 
   if (me && state !== 'intro'){
-    const gy = groundAt(player.x, player.z) ?? player.y;
+    const gy = bench ? BENCH.seatY : (groundAt(player.x, player.z) ?? player.y);
     player.y += (gy - player.y) * Math.min(1, dt*12);
     me.root.position.set(player.x, player.y, player.z);
     me.update(dt, t);
+    if (bench){
+      // seated: drift slowly to a low view over the still water and its reflection
+      tmpV.set(player.x * .5 + Math.sin(t * .07) * .35, 2.35 + Math.sin(t * .11) * .06, BENCH.z + 4.4);
+      camera.position.lerp(tmpV, 1 - Math.exp(-dt * 1.1));
+      lookV.lerp(new THREE.Vector3(player.x * .2, .2, -42), 1 - Math.exp(-dt * 1.1));
+      camera.lookAt(lookV);
+    } else {
     // camera follow
     const yawTarget = camYaw;
     tmpV.set(player.x + Math.sin(yawTarget)*Math.cos(camPitch)*camDist, player.y + 1.2 + Math.sin(camPitch)*camDist, player.z + Math.cos(yawTarget)*Math.cos(camPitch)*camDist);
     if (me.sit){ tmpV.y += 1.2; }
     camera.position.lerp(tmpV, 1 - Math.exp(-dt*5));
-    lookV.set(player.x, player.y + 1.55 + (me.sit ? .8 : 0), player.z);
+    lookV.lerp(new THREE.Vector3(player.x, player.y + 1.55 + (me.sit ? .8 : 0), player.z), 1 - Math.exp(-dt*8));
     camera.lookAt(lookV);
+    }
     leaves(dt, t, player.x, player.z);
     if (t - lastSendT > .2){ lastSendT = t; sendPresence(false); }
   } else {
     // intro: a slow drifting view across the lake
     const s = Math.sin(t*.08);
-    tmpV.set(s*5, 6.5 + Math.sin(t*.13)*.6, 44 - Math.abs(s)*2);
+    tmpV.set(s*10, 10 + Math.sin(t*.13)*.8, 84 - Math.abs(s)*3);
     camera.position.copy(tmpV);
-    camera.lookAt(s*2, 10.5, -30);
-    leaves(dt, t, 0, 22);
+    camera.lookAt(s*3, 16, -60);
+    leaves(dt, t, 0, 44);
   }
   water.material.uniforms.time.value = t;
   water.material.uniforms.wind.value = wind.level;
@@ -1298,7 +1367,7 @@ function frame(){
   roofMat.opacity += (roofT - roofMat.opacity) * Math.min(1, dt*5);
   roofMat.depthWrite = roofMat.opacity > .95;
   // sun & shadows follow the walker
-  const fx = me ? player.x : 0, fz = me ? player.z : 18;
+  const fx = me ? player.x : 0, fz = me ? player.z : 40;
   sun.position.set(fx + SUN_OFF.x, SUN_OFF.y, fz + SUN_OFF.z); sun.target.position.set(fx, 0, fz);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
