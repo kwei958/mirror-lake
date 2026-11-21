@@ -140,6 +140,22 @@
   #praise .psub{margin-top:6px;font-size:13.5px;color:var(--ink2);word-break:keep-all}
   #praise.gold .pcard{background:linear-gradient(180deg,rgba(255,248,222,.97),rgba(250,236,190,.97));border-color:#c9a043}
   #praise.gold .ptitle{color:#7a5410}
+  #eggVeil{position:fixed;inset:0;z-index:24;pointer-events:none;opacity:0;transition:opacity 1.6s ease;
+    background:radial-gradient(ellipse at 50% 46%,rgba(255,232,160,0) 28%,rgba(255,214,110,.26) 68%,rgba(140,92,14,.42) 100%)}
+  #eggVeil.show{opacity:1}
+  #eggCard{position:fixed;left:50%;bottom:104px;transform:translate(-50%,-14px) scale(.97);z-index:26;pointer-events:none;opacity:0;transition:opacity 1.1s ease,transform 1.1s ease;text-align:center}
+  #eggCard.show{opacity:1;transform:translate(-50%,0) scale(1)}
+  body.touch #eggCard{bottom:calc(206px + env(safe-area-inset-bottom))}
+  #eggCard .ecard{min-width:min(380px,86vw);max-width:90vw;padding:16px 30px 16px;border-radius:20px;background:linear-gradient(180deg,rgba(58,38,6,.86),rgba(30,20,4,.9));
+    border:1.5px solid #e2b84e;box-shadow:0 0 0 5px rgba(226,184,78,.16),0 14px 54px rgba(120,80,0,.5),inset 0 0 34px rgba(255,210,110,.14)}
+  #eggCard .ekick{font:600 12px/1 "Gowun Dodum",sans-serif;letter-spacing:.42em;color:#f3d27a}
+  #eggCard .ename{margin-top:9px;font:700 31px/1.2 "Gowun Batang",serif;letter-spacing:.08em;color:transparent;
+    background:linear-gradient(100deg,#b8862b 0%,#fff3c4 22%,#e7bb4f 40%,#fff7d8 55%,#c9952f 75%,#fff0b8 100%);background-size:220% 100%;
+    -webkit-background-clip:text;background-clip:text;animation:eshine 3.2s linear infinite}
+  #eggCard .eeng{margin-top:3px;font:600 10.5px/1 "Gowun Dodum",sans-serif;letter-spacing:.5em;color:#c9a54f}
+  #eggCard .eline{margin-top:12px;font:700 19px/1.5 "Gowun Batang",serif;color:#fff4d0;text-shadow:0 0 14px rgba(255,200,90,.65);word-break:keep-all}
+  #eggCard .esub{margin-top:7px;font-size:12.5px;color:#e9d39a;opacity:.85;word-break:keep-all}
+  @keyframes eshine{from{background-position:120% 0}to{background-position:-100% 0}}
   #jumpFloat{display:none}
   body.touch #jumpFloat{display:flex;position:fixed;right:14px;bottom:96px;z-index:6;width:62px;height:62px;border-radius:50%;flex-direction:column;align-items:center;justify-content:center;gap:0;
     border:1px solid var(--line);background:var(--paper2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:var(--shadow);color:var(--ink);padding:0;touch-action:manipulation}
@@ -196,6 +212,9 @@
 <div id="quoteWrap"><div id="quote"><div id="quoteText"></div><div id="quoteBy"></div></div></div>
 <div id="toast" class="card"></div>
 <div id="praise"><div class="pcard"><div class="pico">✦</div><div class="ptitle"></div><div class="psub"></div></div></div>
+<div id="eggVeil"></div>
+<div id="eggCard"><div class="ecard"><div class="ekick">✦ 이스터에그 발견 ✦</div><div class="ename">위즈덤 에그</div><div class="eeng">WISDOM EGG</div>
+  <div class="eline">“상승장이 오면 돈 버실 겁니다”</div><div class="esub">한 시간 동안 호수 곁에 머문 분께 드리는 선물 · 이제부터 황금 망토를 두르게 돼요</div></div></div>
 <button id="jumpFloat" title="점프"><b>⤒</b><em>점프</em></button>
 
 <div id="entry">
@@ -745,6 +764,7 @@ function praise(id, title, sub, opts = {}){
 function nextPraise(){
   const p = praiseQueue.shift(); const el = $('#praise');
   if (!p){ praiseBusy = false; return; }
+  if (typeof egg !== 'undefined' && egg){ praiseQueue.unshift(p); setTimeout(nextPraise, 1500); return; }   // the Wisdom Egg has the stage
   praiseBusy = true;
   el.querySelector('.ptitle').textContent = p.title; el.querySelector('.psub').textContent = p.sub;
   el.classList.toggle('gold', p.gold); el.classList.add('show');
@@ -777,7 +797,135 @@ function checkMoments(){
     bench.peace = true; me.playEmote('calm');
     praise('peace', '이너피스를 얻었어요.', '3분 동안 고요한 물결을 바라봤어요.', { repeat: true, gold: true });
   }
+  if (!eggShown && !egg && state === 'play' && !document.hidden && NET.enteredAt && performance.now() - NET.enteredAt > EGG_MS) startEgg();
   if (NET.enteredAt && performance.now() - NET.enteredAt > 600000) praise('stay10', '10분의 쉼표를 가졌어요.', '시장의 소음에서 잠시 멀어졌어요.');
+}
+
+
+// ---------------- Wisdom Egg: an hour by the lake in one visit ----------------
+const EGG_MS = 3600000;
+const goldKey = () => 'mk_gold_' + nickHash(myName || '');
+const eggTopic = () => `${NET.root}/egg/${nickHash(myName || '')}`;
+function eggTexture(){
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512; const c = cv.getContext('2d');
+  const g = c.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#fff6c9'); g.addColorStop(.3, '#f3d371'); g.addColorStop(.65, '#d9a63a'); g.addColorStop(1, '#8f6214');
+  c.fillStyle = g; c.fillRect(0, 0, 1024, 512);
+  // the band of W's around the egg
+  c.fillStyle = 'rgba(112,72,10,.9)'; c.fillRect(0, 236, 1024, 92);
+  c.fillStyle = '#fff1b0'; c.fillRect(0, 228, 1024, 6); c.fillRect(0, 330, 1024, 6);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let i = 0; i < 6; i++){
+    const x = (i + .5) * 1024 / 6;
+    c.font = '700 80px "Gowun Batang", serif'; c.fillStyle = '#ffe596'; c.fillText('W', x, 285);
+    c.save(); c.translate(x + 1024/12, 282); c.rotate(Math.PI/4); c.fillStyle = '#f7d779'; c.fillRect(-9, -9, 18, 18); c.restore();
+  }
+  // little W's and pearls near the crown, scallops near the base
+  c.font = '700 40px "Gowun Batang", serif';
+  for (let i = 0; i < 8; i++){ c.fillStyle = 'rgba(150,100,20,.75)'; c.fillText('W', (i + .25) * 128, 108); }
+  for (let x = 16; x < 1024; x += 32){ c.fillStyle = '#fff8dc'; c.beginPath(); c.arc(x, 168, 5, 0, Math.PI*2); c.fill(); }
+  c.strokeStyle = 'rgba(120,80,14,.8)'; c.lineWidth = 5;
+  for (let x = 0; x < 1024; x += 64){ c.beginPath(); c.arc(x + 32, 392, 26, 0, Math.PI); c.stroke(); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function raysTexture(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 512; const c = cv.getContext('2d');
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, 256);
+  g.addColorStop(0, 'rgba(255,240,190,.95)'); g.addColorStop(.35, 'rgba(255,214,120,.35)'); g.addColorStop(1, 'rgba(255,200,90,0)');
+  c.fillStyle = g; c.setTransform(1, 0, 0, 1, 256, 256);
+  for (let i = 0; i < 18; i++){
+    const a = i / 18 * Math.PI * 2, w = i % 2 ? .05 : .09;
+    c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 256, a - w, a + w); c.closePath(); c.fill();
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+let eggGeo = null, eggMat = null, RAYS = null, egg = null, eggShown = false;
+const eggV = new THREE.Vector3(), eggDir = new THREE.Vector3();
+function eggAnchor(out){
+  eggDir.subVectors(lookV, camera.position).normalize();
+  const D = bench ? 3.4 : Math.min(3.4, camera.position.distanceTo(lookV) * .5);
+  out.copy(camera.position).addScaledVector(eggDir, D); out.y += (bench ? -.15 : .12) + (camera.aspect < 1 ? .55 : 0);   // phones: a little higher, above the card
+  return out;
+}
+function startEgg(){
+  eggShown = true;
+  if (!eggGeo){
+    const pts = []; for (let i = 0; i <= 40; i++){ const a = i / 40 * Math.PI; pts.push(new THREE.Vector2(Math.max(.0001, Math.sin(a) * .5 * (1 + .13*Math.cos(a))), -Math.cos(a) * .7)); }
+    eggGeo = new THREE.LatheGeometry(pts, 56);
+    const tex = eggTexture();
+    eggMat = new THREE.MeshStandardMaterial({ map: tex, roughness: .26, metalness: .35, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .32 });
+    RAYS = raysTexture();
+  }
+  const grp = new THREE.Group();
+  const mesh = new THREE.Mesh(eggGeo, eggMat); grp.add(mesh);
+  const back = new THREE.Group(); grp.add(back);
+  const rays = new THREE.Sprite(new THREE.SpriteMaterial({ map: RAYS, color: 0xffe39a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  rays.scale.set(4.4, 4.4, 1); back.add(rays);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffd98a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  glow.scale.set(2.6, 2.6, 1); back.add(glow);
+  const light = new THREE.PointLight(0xffd27a, 0, 9, 1.6); grp.add(light);
+  const N = 70, pos = new Float32Array(N*3), sp = new Float32Array(N);
+  for (let i = 0; i < N; i++){ const a = Math.random()*Math.PI*2, r = .5 + Math.random()*1.1; pos[i*3] = Math.cos(a)*r; pos[i*3+1] = -1.2 + Math.random()*2.4; pos[i*3+2] = Math.sin(a)*r; sp[i] = .25 + Math.random()*.6; }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(pg, new THREE.PointsMaterial({ map: GLOW, color: 0xffe7a0, size: .16, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  grp.add(pts);
+  eggAnchor(eggV); grp.position.copy(eggV).add(new THREE.Vector3(0, 2.6, 0)); grp.scale.setScalar(.01);
+  scene.add(grp);
+  egg = { grp, mesh, back, rays, glow, light, pts, sp, t0: performance.now(), done: false };
+  $('#eggVeil').classList.add('show'); $('#praise').classList.remove('show');
+  setTimeout(() => $('#eggCard').classList.add('show'), 1300);
+  if (me) me.playEmote('wow');
+  setTimeout(() => { if (me) me.playEmote('joy'); }, 4200);
+  if (guardian) guardian.playEmote('cheer');
+}
+function updateEgg(dt, t){
+  if (!egg) return;
+  const e = (performance.now() - egg.t0) / 1000, E = egg;
+  eggAnchor(eggV);
+  let k = 1, fly = 0;
+  if (e < 1.8){ k = 1 - Math.pow(1 - e/1.8, 3); eggV.y += 2.6 * (1 - k); }
+  else if (e < 11){ eggV.y += Math.sin(e*1.6) * .07; }
+  else {
+    fly = Math.min(1, (e - 11) / 1.4); const f = fly*fly;
+    eggV.lerp(tmpE.set(player.x, player.y + 1.35, player.z), f);
+    if (!E.cardOff){ E.cardOff = true; $('#eggCard').classList.remove('show'); }
+  }
+  E.grp.position.lerp(eggV, e < 1.8 ? 1 : 1 - Math.exp(-dt * (fly ? 14 : 10)));
+  E.grp.scale.setScalar(Math.max(.01, .72 * clamp(camera.aspect / 1.3, .5, 1) * (e < 1.8 ? .25 + .75*k : 1) * (1 - .88*fly)));
+  E.mesh.rotation.y += dt * (.9 + fly*6); E.mesh.rotation.z = Math.sin(e*.9) * .08;
+  // the rays sit just behind the egg, as the camera sees it
+  eggDir.subVectors(E.grp.position, camera.position).normalize(); E.back.position.copy(eggDir).multiplyScalar(.9 / Math.max(.05, E.grp.scale.x));
+  const glowA = Math.min(1, e/1.5) * (1 - fly);
+  E.rays.material.opacity = .7 * glowA; E.rays.material.rotation += dt * .18;
+  const pul = 1 + Math.sin(e*2.2)*.05; E.rays.scale.set(4.4*pul, 4.4*pul, 1);
+  E.glow.material.opacity = .65 * glowA; E.light.intensity = 3.2 * glowA;
+  E.pts.material.opacity = .9 * glowA;
+  const p = E.pts.geometry.attributes.position;
+  for (let i = 0; i < E.sp.length; i++){ let y = p.getY(i) + dt*E.sp[i]; if (y > 1.4) y = -1.2; p.setY(i, y); }
+  p.needsUpdate = true;
+  eggMat.emissiveIntensity = .3 + .12*Math.sin(e*3);
+  if (fly >= 1 && !E.done){
+    E.done = true;
+    const at = new THREE.Vector3(player.x, player.y + 1.3, player.z);
+    for (let i = 0; i < 6; i++) setTimeout(() => coinBurst(at.clone().add(new THREE.Vector3((Math.random()-.5)*.8, Math.random()*.8, (Math.random()-.5)*.8))), i*90);
+    becomeGold(true);
+    scene.remove(E.grp); E.rays.material.dispose(); E.glow.material.dispose(); E.pts.material.dispose(); E.pts.geometry.dispose();
+    egg = null;
+    setTimeout(() => $('#eggVeil').classList.remove('show'), 400);
+    setTimeout(() => toast('황금 망토와 황금 새싹이 반짝이기 시작했어요'), 700);
+  }
+}
+const tmpE = new THREE.Vector3();
+function becomeGold(share){
+  if (!myName) return;
+  store.set(goldKey(), '1');
+  if (me) me.setGold(true);
+  if (share){ for (const cl of NET.clients) if (cl.connected) cl.publish(eggTopic(), '1', { retain: true, qos: 0 }); }
+  lastSent = ''; sendPresence(true);
+}
+function onEggMessage(topic, buf){
+  if (!myName || topic !== eggTopic() || !buf || buf.length !== 1 || buf[0] !== 49) return;
+  if (store.get(goldKey()) !== '1' || (me && !me.gold)) becomeGold(false);
 }
 
 // ---------------- W coins: a quiet treasure hunt everyone shares ----------------
@@ -856,6 +1004,8 @@ function subscribeWisdom(){
   if (!myName) return;
   const t = wTopic();
   for (const c of NET.clients){ if (!c.connected || c.__wTopic === t) continue; if (c.__wTopic) c.unsubscribe(c.__wTopic); c.subscribe(t, { qos: 0 }); c.__wTopic = t; }
+  const et = eggTopic();
+  for (const c of NET.clients){ if (!c.connected || c.__eTopic === et) continue; if (c.__eTopic) c.unsubscribe(c.__eTopic); c.subscribe(et, { qos: 0 }); c.__eTopic = et; }
 }
 function onWisdomMessage(topic, buf){
   if (!myName || topic !== wTopic() || !buf || !buf.length || buf.length > 200) return;
@@ -1017,6 +1167,8 @@ const GUARD = {
   gold: new THREE.MeshStandardMaterial({ color:0xc9a043, roughness:.35, metalness:.55 }),
 };
 GUARD.hem.rotateZ(Math.PI - 1.5 + Math.PI/2);   // line the hem up with the open cape
+// the Wisdom Egg's reward: a shining gold cape and a gold sprout
+const GOLDLEAF = new THREE.MeshStandardMaterial({ color:0xf3c94e, roughness:.22, metalness:.6, emissive:0xa67812, emissiveIntensity:.55 });
 function makeTooth(ci, big=false){
   const capeMat = new THREE.MeshStandardMaterial({ color:CAPES[ci] ?? CAPES[0], roughness:.75, side:THREE.DoubleSide });
   const G = toothGeo, root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1093,7 +1245,27 @@ class Avatar {
     scene.add(this.root);
   }
   setName(n){ if (n === this.name) return; this.name = n; this.tag.material.map.dispose(); this.tag.material.map = makeTagTexture(n, this.me); this.tag.material.needsUpdate = true; }
-  setColor(ci){ if (ci === this.ci) return; this.ci = ci; this.parts.capeMat.color.setHex(CAPES[ci] ?? CAPES[0]); }
+  setColor(ci){ if (ci === this.ci) return; this.ci = ci; if (!this.gold) this.parts.capeMat.color.setHex(CAPES[ci] ?? CAPES[0]); }
+  setGold(on){
+    on = !!on; if (on === !!this.gold) return; this.gold = on;
+    const P = this.parts, m = P.capeMat;
+    if (on){
+      m.color.setHex(0xf2c445); m.metalness = .3; m.roughness = .32; m.emissive.setHex(0xa8740e); m.emissiveIntensity = .4;
+      P.sprout.traverse(o => { if (o.isMesh) o.material = GOLDLEAF; }); P.sprout.scale.setScalar(1.18);
+      this.sparks = [];
+      const spots = [[0,1.62,.05],[-.17,1.5,0],[.18,1.55,-.04],[-.3,.75,-.42],[.32,.55,-.45],[0,.3,-.55],[-.15,1.0,-.4],[.2,.95,-.38]];
+      spots.forEach((q, i) => {
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xfff0b0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+        s.position.set(...q); s.userData = { ph: Math.random()*6.28, sp: 1.3 + Math.random()*1.6, sz: i < 3 ? .3 : .38 }; P.body.add(s); this.sparks.push(s);
+      });
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffe08a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .4 }));
+      halo.position.set(0, 1.47, 0); halo.scale.set(.75, .75, 1); P.body.add(halo); this.sparks.push(halo); halo.userData = { halo: true };
+    } else {
+      m.color.setHex(CAPES[this.ci] ?? CAPES[0]); m.metalness = 0; m.roughness = .75; m.emissive.setHex(0); m.emissiveIntensity = 1;
+      P.sprout.traverse(o => { if (o.isMesh) o.material = MAT.leaf; }); P.sprout.scale.setScalar(1);
+      for (const s of this.sparks || []){ P.body.remove(s); s.material.dispose(); } this.sparks = null;
+    }
+  }
   playEmote(k){ if (!EMO[k]) return; this.emote = k; this.et = 0; this.bubble.material.map = getBubble(k); this.bubble.material.needsUpdate = true; }
   update(dt, t){
     const P = this.parts, moving = this.speed > .3;
@@ -1132,6 +1304,12 @@ class Avatar {
     P.arms[0].rotation.x += (axL - P.arms[0].rotation.x)*k; P.arms[1].rotation.x += (axR - P.arms[1].rotation.x)*k;
     P.legs[0].rotation.x += (legX0 - P.legs[0].rotation.x)*k; P.legs[1].rotation.x += (legX1 - P.legs[1].rotation.x)*k;
     P.sprout.rotation.z += (sproutZ - P.sprout.rotation.z)*k; P.sprout.rotation.x += (sproutX - P.sprout.rotation.x)*k;
+    if (this.sparks){
+      P.capeMat.emissiveIntensity = .38 + .2*Math.sin(t*2.3 + this.walk*.3);
+      for (const s of this.sparks){ const u = s.userData;
+        if (u.halo){ s.material.opacity = .32 + .12*Math.sin(t*1.7); continue; }
+        const a = Math.pow(Math.max(0, Math.sin(t*u.sp + u.ph)), 4); s.material.opacity = a; s.scale.setScalar(u.sz*(.4 + a)); }
+    }
     P.capePv.rotation.x = .12 + Math.min(this.speed/8,1)*.55 + Math.sin(t*2.6 + this.walk*.5)*(.03 + windU.value*.05);
     this.root.rotation.y = lerpAngle(this.root.rotation.y, this.heading, Math.min(1, dt*10));
     // bubble
@@ -1142,7 +1320,7 @@ class Avatar {
     this.bubble.position.y = 2.95 + (show ? Math.sin(bt*3)*.04 : 0) + P.body.position.y - .05;
     this.tag.position.y = 1.98 + P.body.position.y - .05;
   }
-  dispose(){ scene.remove(this.root); this.tag.material.map.dispose(); this.tag.material.dispose(); this.bubble.material.dispose(); this.parts.capeMat.dispose(); }
+  dispose(){ for (const s of this.sparks || []) s.material.dispose(); scene.remove(this.root); this.tag.material.map.dispose(); this.tag.material.dispose(); this.bubble.material.dispose(); this.parts.capeMat.dispose(); }
 }
 
 // ---------------- ambience: wind, water, 풍경 ----------------
@@ -1325,9 +1503,12 @@ const cleanName = s => String(s ?? '').replace(BAD_CH, '').replace(/\s+/g, ' ').
     else { me.setName(myName); me.setColor(myColor); }
     $('#entry').classList.add('hide'); $('#nick').blur();
     const firstEnter = state === 'intro';
-    updateWisdom(false); subscribeWisdom();
+    updateWisdom(false); subscribeWisdom(); me.setGold(store.get(goldKey()) === '1');
     state = 'play'; lastSent = ''; sendPresence(true); updateCount();
-    if (firstEnter) setTimeout(() => praise('welcome', `어서 오세요, ${myName}님`, '맑은 물가에서 잠시 쉬어 가세요 · 곳곳에 W 코인이 숨어 있어요'), 1800);
+    if (firstEnter) setTimeout(() => {
+      praise('welcome', `어서 오세요, ${myName}님`, '맑은 물가에서 잠시 쉬어 가세요 · 곳곳에 W 코인이 숨어 있어요');
+      praise('egghint', '호수에서 오래 머물 경우 이스터에그를 발견하게 될지도 모릅니다', '서두르지 않는 마음에게만 보이는 선물이에요', { repeat: true });
+    }, 1800);
   });
   $('#btnName').addEventListener('click', () => { state = 'menu'; keys.clear(); $('#entry').classList.remove('hide'); $('#go').textContent = '바꾸기'; setTimeout(() => $('#nick').focus(), 50); });
 }
@@ -1343,7 +1524,7 @@ const NET = {
 let room = null; const others = new Map(); let lastSent = '', lastSendT = 0, lastBeat = 0;
 const remote = new Map();   // key -> { pr, seen, t }
 function myPresence(){
-  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, j: player.grounded ? 0 : 1, b: bench ? bench.bi * 3 + bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
+  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, j: player.grounded ? 0 : 1, b: bench ? bench.bi * 3 + bench.seat : -1, g: me?.gold ? 1 : 0, e: emoteKey, et: emoteStamp, jt: NET.jt };
 }
 function sendPresence(force){
   if (!me || state === 'intro' || !NET.entered) return;
@@ -1371,7 +1552,7 @@ function upsertPeer(key, pr){
     others.set(key, o);
     o.av.root.position.set(num(pr.x,-60,60,0), num(pr.y,0,3,0), num(pr.z,-60,60,0));
   }
-  o.av.setName(name); o.av.setColor(ci);
+  o.av.setName(name); o.av.setColor(ci); o.av.setGold(pr.g === 1);
   o.tx = num(pr.x,-60,60,0); o.tz = num(pr.z,-60,60,0); o.ty = num(pr.y,0,3,0);
   o.av.heading = num(pr.r,-20,20,0); o.av.sit = pr.s === 1; o.av.air = pr.j === 1;
   if (pr.et !== o.et){ o.et = pr.et; if (typeof pr.e === 'string' && EMO[pr.e]) o.av.playEmote(pr.e); }
@@ -1419,6 +1600,7 @@ setInterval(() => {
 function onMqttMessage(topic, buf){
   if (topic.startsWith(`${NET.root}/coin/`)){ onCoinMessage(topic, buf); return; }
   if (topic.startsWith(`${NET.root}/wisdom/`)){ onWisdomMessage(topic, buf); return; }
+  if (topic.startsWith(`${NET.root}/egg/`)){ onEggMessage(topic, buf); return; }
   const id = topic.split('/').pop();
   if (!/^[0-9a-f]{16}$/.test(id) || id === NET.id) return;
   const key = 'm:' + id;
@@ -1448,7 +1630,7 @@ async function startMqtt(){
       ever = true; if (!NET.connectedAt) NET.connectedAt = performance.now();
       c.subscribe(`${NET.root}/p/+`, { qos: 0 });
       c.subscribe(`${NET.root}/coin/+`, { qos: 0 });
-      c.__wTopic = null; if (NET.entered) subscribeWisdom();
+      c.__wTopic = null; c.__eTopic = null; if (NET.entered) subscribeWisdom();
       if (!c.__viewSent){ c.__viewSent = true; c.publish(`${NET.root}/v/${NET.id}`, '1', { qos: 0 }); }   // one anonymous 'page opened' ping for visitor stats
       if (NET.entered){ lastSent = ''; sendPresence(true); }
       updateCount();
@@ -1612,6 +1794,7 @@ function frame(){
     me.root.position.set(player.x, player.y, player.z);
     checkCoins();
     checkMoments();
+    updateEgg(dt, t);
     me.update(dt, t);
     if (bench){
       // seated: drift slowly to a low view over the still water and its reflection

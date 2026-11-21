@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: visitor-stats
   cancel-in-progress: false
@@ -26,3 +27,8 @@ jobs:
           git add stats
           git commit -m "Visitor stats $(date -u +%FT%H:%MZ)" || exit 0
           for i in 1 2 3 4 5; do git pull --rebase -q && git push && break; sleep 7; done
+      - name: Start the next window
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run stats.yml -R ${{ github.repository }} --ref main

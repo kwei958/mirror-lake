@@ -35,13 +35,14 @@ for (const url of BROKERS){
     let s = sessions.get(id);
     if (!s){
       if (Math.abs(now - t) > 60000) return;                 // an old retained state, not a live visitor
-      s = { first: now, last: now, jt: 0, ended: false, bench: false, zen: false };
+      s = { first: now, last: now, jt: 0, ended: false, bench: false, zen: false, gold: false };
       sessions.set(id, s); views.add(id);
     }
     s.last = now; s.ended = false;
     if (typeof pr.jt === 'number' && pr.jt > now0 - 24 * 3600e3 && pr.jt <= now) s.jt = pr.jt;
     if (Number.isInteger(pr.b) && pr.b >= 0) s.bench = true;
     else if (pr.s === 1) s.zen = true;
+    if (pr.g === 1) s.gold = true;
     names.add(pr.n.trim().slice(0, 12));
   });
 }
@@ -57,13 +58,14 @@ setInterval(() => {
 setTimeout(() => {
   const end = Date.now();
   const stays = [];
-  let stillHere = 0, bench = 0, zen = 0;
+  let stillHere = 0, bench = 0, zen = 0, gold = 0;
   for (const s of sessions.values()){
     const from = s.jt || s.first;
     stays.push(Math.max(0, s.last - from) / 60000);
     if (!s.ended && end - s.last < 15000) stillHere++;
     if (s.bench) bench++;
     if (s.zen) zen++;
+    if (s.gold) gold++;
   }
   stays.sort((a, b) => a - b);
   const avg = stays.length ? stays.reduce((a, b) => a + b, 0) / stays.length : 0;
@@ -76,7 +78,7 @@ setTimeout(() => {
     avg_stay_min: +avg.toFixed(1), median_stay_min: +med.toFixed(1),
     total_stay_hours: +(stays.reduce((a, b) => a + b, 0) / 60).toFixed(2),
     longest_stay_min: +(stays.at(-1) || 0).toFixed(1),
-    sat_on_bench: bench, meditated: zen,
+    sat_on_bench: bench, meditated: zen, gold_cape: gold,
   };
   fs.mkdirSync('stats', { recursive: true });
   fs.writeFileSync('stats/latest.json', JSON.stringify(out, null, 1) + '\n');
