@@ -718,7 +718,7 @@ function buildGuardian(){
   for (let k = 0; k < 6; k++){ const a = k/6*Math.PI*2 + .5; isl.add(new THREE.SphereGeometry(.5, 8, 6), [Math.cos(a)*3.9, .3, Math.sin(a)*3.9], null, [1,.45,1], ['#5d8a3c','#6c9a43'][k%2]); }
   const m = isl.build(natureMat); m.position.set(chartRoot.position.x, 0, chartRoot.position.z); scene.add(m);
   // the guardian rides with the charts, so from any bench you see it watching them
-  guardian = new Avatar('투쓰 · 호숫가 지킴이', 0, false, true);
+  guardian = new Avatar('투쓰', 0, false, true);
   chartRoot.add(guardian.root);
   guardian.root.position.set(0, .32, 3.0); guardian.root.scale.setScalar(1.3); guardian.tag.scale.multiplyScalar(.85);
   guardian.sit = true; guardian.heading = Math.PI; guardian.root.rotation.y = Math.PI; guardian.nextEmote = 5;   // sits with its back to us, watching the charts
