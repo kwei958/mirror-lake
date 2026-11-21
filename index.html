@@ -328,7 +328,6 @@ const lakePts = (off=0, n=200) => { const p=[]; for (let i=0;i<n;i++){ const th=
 const colliders = [];
 const PAV = { x: 60, z: -6 };
 const DECK = { x: 0, z: 3, r: 4.6 };                         // round deck in the middle of the lake
-const BENCH = { z: 3.6, seats: [-1.25, 0, 1.25], seatY: 0.54 }; // a bench for three, facing the far shore
 const onPier = (x,z) => (Math.abs(x) < 1.2 && z > 7.2 && z < 38.5) || Math.hypot(x-DECK.x, z-DECK.z) < DECK.r - .15;
 const inPav = (x,z) => Math.abs(x-PAV.x) < 3.4 && Math.abs(z-PAV.z) < 2.9;
 
@@ -476,16 +475,27 @@ for (let z = 8.6; z < 37; z += 2.4){ for (const sx of [-1,1]) nature.add(new THR
 nature.add(new THREE.CylinderGeometry(DECK.r, DECK.r, .16, 28), [DECK.x, .12, DECK.z], null, 1, '#866443');
 for (let k=-4; k<=4; k++){ const w = 2*Math.sqrt(Math.max(0, DECK.r*DECK.r - k*k)) - .3; if (w > .6) nature.add(new THREE.BoxGeometry(w, .02, .05), [DECK.x, .205, DECK.z + k], null, 1, '#6e5236'); }
 for (let k=0; k<12; k++){ const a = k/12*Math.PI*2; nature.add(new THREE.CylinderGeometry(.13,.14,1.4,7), [DECK.x + Math.cos(a)*(DECK.r-.3), -.5, DECK.z + Math.sin(a)*(DECK.r-.3)], null, 1, '#5c4430'); }
-// the bench (three seats), facing north across the water
-{
-  const bz = BENCH.z, wood = '#7a5634', dark = '#5e4229';
-  for (const dz of [-.2, 0, .2]) nature.add(new THREE.BoxGeometry(3.9, .07, .18), [0, .74, bz + dz], null, 1, wood);
-  for (const dy of [.95, 1.17, 1.39]) nature.add(new THREE.BoxGeometry(3.9, .14, .06), [0, dy, bz + .36 + (dy - .95) * .18], [.18, 0, 0], 1, wood);
+// benches for three: one on the deck, eight around the shore, all facing the water
+const BENCH_SEATS = [-1.25, 0, 1.25];
+const BENCHES = [{ x: DECK.x, z: 3.6, base: .2, face: Math.PI }];
+for (let k = 0; k < 8; k++){
+  const th = Math.PI/2 + (k + .5) * Math.PI/4, rr = lakeR(th) + 2.4;
+  const x = Math.cos(th) * rr, z = Math.sin(th) * rr;
+  BENCHES.push({ x, z, base: 0, face: Math.atan2(-x, -z) });   // face the middle of the lake
+}
+for (const b of BENCHES){ b.ry = b.face - Math.PI; b.c = Math.cos(b.ry); b.s = Math.sin(b.ry); b.seatY = b.base + .34; }
+const benchToWorld = (b, lx, lz) => [b.x + b.c*lx + b.s*lz, b.z - b.s*lx + b.c*lz];
+const benchLocal = (b, x, z) => { const dx = x - b.x, dz = z - b.z; return [b.c*dx - b.s*dz, b.s*dx + b.c*dz]; };
+for (const b of BENCHES){
+  const wood = '#7a5634', dark = '#5e4229';
+  const part = (geo, lx, ly, lz, rx, col) => { const [wx, wz] = benchToWorld(b, lx, lz); nature.add(geo, [wx, b.base + ly, wz], [rx, b.ry, 0, 'YXZ'], 1, col); };
+  for (const dz of [-.2, 0, .2]) part(new THREE.BoxGeometry(3.9, .07, .18), 0, .54, dz, 0, wood);
+  for (const dy of [.75, .97, 1.19]) part(new THREE.BoxGeometry(3.9, .14, .06), 0, dy, .36 + (dy - .75) * .18, .18, wood);
   for (const sx of [-1.75, 1.75]){
-    for (const dz of [-.24, .26]) nature.add(new THREE.BoxGeometry(.1, .56, .1), [sx, .47, bz + dz], null, 1, dark);
-    nature.add(new THREE.BoxGeometry(.1, .8, .1), [sx, 1.1, bz + .38], [.18, 0, 0], 1, dark);
-    nature.add(new THREE.BoxGeometry(.12, .07, .62), [sx * 1.08, 1.02, bz + .03], null, 1, dark);
-    nature.add(new THREE.BoxGeometry(.08, .28, .08), [sx * 1.08, .86, bz - .22], null, 1, dark);
+    for (const dz of [-.24, .26]) part(new THREE.BoxGeometry(.1, .56, .1), sx, .27, dz, 0, dark);
+    part(new THREE.BoxGeometry(.1, .8, .1), sx, .9, .38, .18, dark);
+    part(new THREE.BoxGeometry(.12, .07, .62), sx * 1.08, .82, .03, 0, dark);
+    part(new THREE.BoxGeometry(.08, .28, .08), sx * 1.08, .66, -.22, 0, dark);
   }
 }
 
@@ -682,6 +692,7 @@ function drawChart(cv, s){
   c.fillText(`자료: 위즈덤투스 데일리차트 · FRED 일간 종가 · ${d[d.length-1][0]} 기준 (투자 권유 아님)`, 72, H-56);
 }
 const charts = [];
+const chartRoot = new THREE.Group(); chartRoot.position.set(0, 0, -16); scene.add(chartRoot);   // the pair slowly turns to face the viewer
 function buildCharts(){
   SERIES.forEach((s, i) => {
     const cv = document.createElement('canvas'); cv.width = 1400; cv.height = 860;
@@ -699,8 +710,8 @@ function buildCharts(){
       for (const sx of [1,-1]){ const cap = new THREE.Mesh(new THREE.SphereGeometry(.14,10,8), new THREE.MeshStandardMaterial({ color:0xb8913a, roughness:.4, metalness:.3 })); cap.position.set(sx*(W/2+.27), sy*(H/2+.02), 0); g.add(cap); }
     }
     const sx = i === 0 ? -7.1 : 7.1;
-    g.position.set(sx, 5.6, -16); g.rotation.y = i === 0 ? 0.12 : -0.12;
-    scene.add(g);
+    g.position.set(sx, 5.6, 0); g.rotation.y = i === 0 ? 0.12 : -0.12;
+    chartRoot.add(g);
     charts.push({ g, cv, tex, s, baseY: 5.6, ph: i*1.7 });
   });
   updateAsOf();
@@ -997,26 +1008,30 @@ function toggleZen(){ if (me && state === 'play') setZen(!document.body.classLis
 
 // ---------------- the bench: walk up to it and you sit down; move the cursor to stand ----------------
 let bench = null, benchArmed = true;
-const inBenchZone = (x, z) => Math.abs(x - DECK.x) < 2.3 && Math.abs(z - BENCH.z) < 1.1;
-function benchSeatsTaken(){
+function benchAt(x, z){
+  for (let i = 0; i < BENCHES.length; i++){ const [lx, lz] = benchLocal(BENCHES[i], x, z); if (Math.abs(lx) < 2.3 && Math.abs(lz) < 1.1) return i; }
+  return -1;
+}
+function benchSeatsTaken(bi){
   const s = new Set();
-  for (const r of remote.values()){ const b = r.pr && r.pr.b; if (Number.isInteger(b) && b >= 0 && b < BENCH.seats.length) s.add(b); }
+  for (const r of remote.values()){ const b = r.pr && r.pr.b; if (Number.isInteger(b) && b >= 0 && Math.floor(b / 3) === bi) s.add(b % 3); }
   return s;
 }
-function sitOnBench(){
-  const taken = benchSeatsTaken();
-  const free = BENCH.seats.map((_, i) => i).filter(i => !taken.has(i)).sort((a, b) => Math.abs(BENCH.seats[a] - player.x) - Math.abs(BENCH.seats[b] - player.x));
+function sitOnBench(bi){
+  const B = BENCHES[bi], taken = benchSeatsTaken(bi), [px] = benchLocal(B, player.x, player.z);
+  const free = BENCH_SEATS.map((_, i) => i).filter(i => !taken.has(i)).sort((a, b) => Math.abs(BENCH_SEATS[a] - px) - Math.abs(BENCH_SEATS[b] - px));
   if (!free.length){ benchArmed = false; toast('벤치가 가득 찼어요'); return; }
   const i = free[0];
-  bench = { seat: i, t0: performance.now(), moved: 0, lx: null, ly: null, released: false };
-  player.x = DECK.x + BENCH.seats[i]; player.z = BENCH.z - .05; me.heading = Math.PI; me.speed = 0; me.sit = true;
+  bench = { bi, seat: i, t0: performance.now(), moved: 0, lx: null, ly: null, released: false };
+  [player.x, player.z] = benchToWorld(B, BENCH_SEATS[i], -.05); me.heading = B.face; me.speed = 0; me.sit = true;
   document.body.classList.add('bench');
   toast('벤치에 앉았어요 · 커서를 움직이면 일어나요');
   lastSent = ''; sendPresence(true);
 }
 function standFromBench(){
   if (!bench) return;
-  player.x = DECK.x + BENCH.seats[bench.seat]; player.z = BENCH.z + 1.5; player.y = .2;
+  const B = BENCHES[bench.bi];
+  [player.x, player.z] = benchToWorld(B, BENCH_SEATS[bench.seat], 1.5); player.y = B.base;
   bench = null; benchArmed = false;
   me.sit = document.body.classList.contains('zen');
   document.body.classList.remove('bench');
@@ -1076,7 +1091,7 @@ const NET = {
 let room = null; const others = new Map(); let lastSent = '', lastSendT = 0, lastBeat = 0;
 const remote = new Map();   // key -> { pr, seen, t }
 function myPresence(){
-  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, b: bench ? bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
+  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, b: bench ? bench.bi * 3 + bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
 }
 function sendPresence(force){
   if (!me || state === 'intro' || !NET.entered) return;
@@ -1306,21 +1321,24 @@ function frame(){
       if (groundAt(player.x, nz) !== null){ moved += Math.abs(nz-player.z); player.z = nz; }
       me.heading = Math.atan2(dx, dz);
       me.speed = moved > 0.0001 ? spd : 0;
-      if (!benchArmed && !inBenchZone(player.x, player.z)) benchArmed = true;
-      if (benchArmed && inBenchZone(player.x, player.z)) sitOnBench();
+      const nearBench = benchAt(player.x, player.z);
+      if (!benchArmed && nearBench < 0) benchArmed = true;
+      if (benchArmed && nearBench >= 0) sitOnBench(nearBench);
     } else me.speed = 0;
   } else if (me) me.speed = 0;
 
   if (me && state !== 'intro'){
-    const gy = bench ? BENCH.seatY : (groundAt(player.x, player.z) ?? player.y);
+    const gy = bench ? BENCHES[bench.bi].seatY : (groundAt(player.x, player.z) ?? player.y);
     player.y += (gy - player.y) * Math.min(1, dt*12);
     me.root.position.set(player.x, player.y, player.z);
     me.update(dt, t);
     if (bench){
       // seated: drift slowly to a low view over the still water and its reflection
-      tmpV.set(player.x * .5 + Math.sin(t * .07) * .35, 2.35 + Math.sin(t * .11) * .06, BENCH.z + 4.4);
+      const B = BENCHES[bench.bi], sx = BENCH_SEATS[bench.seat];
+      const [cx, cz] = benchToWorld(B, sx * .5 + Math.sin(t * .07) * .35, 4.4), [ax, az] = benchToWorld(B, sx * .2, -45);
+      tmpV.set(cx, B.base + 2.15 + Math.sin(t * .11) * .06, cz);
       camera.position.lerp(tmpV, 1 - Math.exp(-dt * 1.1));
-      lookV.lerp(new THREE.Vector3(player.x * .2, .2, -42), 1 - Math.exp(-dt * 1.1));
+      lookV.lerp(new THREE.Vector3(ax, .2, az), 1 - Math.exp(-dt * 1.1));
       camera.lookAt(lookV);
     } else {
     // camera follow
@@ -1352,6 +1370,8 @@ function frame(){
     o.av.update(dt, t);
   }
   // charts bob on the still water
+  { const want = Math.atan2(camera.position.x - chartRoot.position.x, camera.position.z - chartRoot.position.z);
+    chartRoot.rotation.y = lerpAngle(chartRoot.rotation.y, want, 1 - Math.exp(-dt * .6)); }
   for (const ch of charts){ ch.g.position.y = ch.baseY + Math.sin(t*.55 + ch.ph)*.1; ch.g.rotation.z = Math.sin(t*.4 + ch.ph)*.006; }
   flies(t);
   // breathing guide: 4s in, 6s out
