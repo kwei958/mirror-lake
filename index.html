@@ -717,11 +717,11 @@ function buildGuardian(){
   for (let k = 0; k < 16; k++){ const a = k/16*Math.PI*2 + .1; isl.add(new THREE.DodecahedronGeometry(.35 + (k%3)*.12, 0), [Math.cos(a)*4.8, .05, Math.sin(a)*4.8], [k,k*2,0], [1,.55,1], ['#9c9583','#8f8a7c','#b5ab94'][k%3]); }
   for (let k = 0; k < 6; k++){ const a = k/6*Math.PI*2 + .5; isl.add(new THREE.SphereGeometry(.5, 8, 6), [Math.cos(a)*3.9, .3, Math.sin(a)*3.9], null, [1,.45,1], ['#5d8a3c','#6c9a43'][k%2]); }
   const m = isl.build(natureMat); m.position.set(chartRoot.position.x, 0, chartRoot.position.z); scene.add(m);
-  // the guardian rides with the charts, so it always faces whoever is looking
+  // the guardian rides with the charts, so from any bench you see it watching them
   guardian = new Avatar('투쓰 · 호숫가 지킴이', 0, false, true);
   chartRoot.add(guardian.root);
-  guardian.root.position.set(0, .32, 3.3); guardian.root.scale.setScalar(2.4); guardian.tag.scale.multiplyScalar(.62);
-  guardian.sit = true; guardian.heading = 0; guardian.root.rotation.y = 0; guardian.nextEmote = 5;
+  guardian.root.position.set(0, .32, 3.0); guardian.root.scale.setScalar(1.3); guardian.tag.scale.multiplyScalar(.85);
+  guardian.sit = true; guardian.heading = Math.PI; guardian.root.rotation.y = Math.PI; guardian.nextEmote = 5;   // sits with its back to us, watching the charts
 }
 function buildCharts(){
   SERIES.forEach((s, i) => {
