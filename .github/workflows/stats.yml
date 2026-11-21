@@ -24,9 +24,16 @@ jobs:
         run: |
           git config user.name "lake-bot"
           git config user.email "lake-bot@users.noreply.github.com"
-          git add stats
-          git commit -m "Visitor stats $(date -u +%FT%H:%MZ)" || exit 0
-          for i in 1 2 3 4 5; do git pull --rebase -q && git push && break; sleep 7; done
+          # re-apply this window on top of the latest main, so two windows never conflict
+          cp stats/latest.json /tmp/latest.json
+          msg="Visitor stats $(date -u +%FT%H:%MZ)"
+          for i in 1 2 3 4 5 6; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/latest.json stats/latest.json
+            jq -c . /tmp/latest.json >> stats/history.jsonl
+            git add stats && git commit -q -m "$msg" && git push -q origin HEAD:main && break
+            sleep $((5 * i))
+          done
       - name: Start the next window
         if: always()
         env:
