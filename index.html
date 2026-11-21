@@ -781,7 +781,7 @@ function checkMoments(){
 }
 
 // ---------------- W coins: a quiet treasure hunt everyone shares ----------------
-const COIN_SLOTS = 15, COIN_GOAL = 5, COIN_RESPAWN = 5000;
+const COIN_SLOTS = 30, COIN_GOAL = 5, COIN_RESPAWN = 5000;
 const coins = Array.from({ length: COIN_SLOTS }, () => ({ g: 0, visibleAt: 0, spot: null, mesh: null, glint: null, tw: Math.random()*6 }));
 const coinSpots = [];
 let wisdom = 0;
@@ -848,8 +848,25 @@ function updateCoins(dt, t){
     if (b.t > .7){ scene.remove(b.s); b.s.material.dispose(); coinBursts.splice(i, 1); }
   }
 }
+// today's coins belong to the nickname: they add up across visits and devices, and start over at midnight (Korea)
+const nickHash = s => { let h = 0x811c9dc5; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(16).padStart(8, '0'); };
+const wKey = () => 'mk_w_' + todayKey() + '_' + nickHash(myName || '');
+const wTopic = () => `${NET.root}/wisdom/${nickHash(myName || '')}`;
+function subscribeWisdom(){
+  if (!myName) return;
+  const t = wTopic();
+  for (const c of NET.clients){ if (!c.connected || c.__wTopic === t) continue; if (c.__wTopic) c.unsubscribe(c.__wTopic); c.subscribe(t, { qos: 0 }); c.__wTopic = t; }
+}
+function onWisdomMessage(topic, buf){
+  if (!myName || topic !== wTopic() || !buf || !buf.length || buf.length > 200) return;
+  let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch(e){ return; }
+  if (!m || m.d !== todayKey() || !Number.isInteger(m.n) || m.n < 0 || m.n > 100000) return;
+  if (m.n > wisdom){ store.set(wKey(), String(m.n)); updateWisdom(false); }
+}
+let wisdomDay = todayKey();
+setInterval(() => { if (wisdomDay !== todayKey()){ wisdomDay = todayKey(); updateWisdom(false); } }, 20000);   // midnight roll-over
 function updateWisdom(pop){
-  try { wisdom = parseInt(store.get('mk_w_' + todayKey()) || '0', 10) || 0; } catch(e){ wisdom = 0; }
+  try { wisdom = parseInt(store.get(wKey()) || '0', 10) || 0; } catch(e){ wisdom = 0; }
   const el = $('#wisdomLine'); $('#wcount').textContent = wisdom;
   el.classList.toggle('full', wisdom >= COIN_GOAL);
   if (pop){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
@@ -868,7 +885,9 @@ function collectCoin(i){
   c.g += 1; c.visibleAt = performance.now() + COIN_RESPAWN; placeCoin(i);
   const payload = JSON.stringify({ g: c.g, t: Date.now() });
   for (const cl of NET.clients) if (cl.connected) cl.publish(`${NET.root}/coin/${i}`, payload, { retain: true, qos: 0 });
-  store.set('mk_w_' + todayKey(), String(wisdom + 1)); updateWisdom(true);
+  store.set(wKey(), String(wisdom + 1)); updateWisdom(true);
+  const wp = JSON.stringify({ d: todayKey(), n: wisdom });
+  for (const cl of NET.clients) if (cl.connected) cl.publish(wTopic(), wp, { retain: true, qos: 0 });
   if (wisdom === COIN_GOAL){
     me.playEmote('joy'); if (guardian) guardian.playEmote('cheer');
     praise('wisdom', '오늘도 지혜가 채워졌어요.', 'W 다섯 개를 모두 찾았어요 · 내일 또 숨겨 둘게요', { gold: true });
@@ -1306,6 +1325,7 @@ const cleanName = s => String(s ?? '').replace(BAD_CH, '').replace(/\s+/g, ' ').
     else { me.setName(myName); me.setColor(myColor); }
     $('#entry').classList.add('hide'); $('#nick').blur();
     const firstEnter = state === 'intro';
+    updateWisdom(false); subscribeWisdom();
     state = 'play'; lastSent = ''; sendPresence(true); updateCount();
     if (firstEnter) setTimeout(() => praise('welcome', `어서 오세요, ${myName}님`, '맑은 물가에서 잠시 쉬어 가세요 · 곳곳에 W 코인이 숨어 있어요'), 1800);
   });
@@ -1398,6 +1418,7 @@ setInterval(() => {
 
 function onMqttMessage(topic, buf){
   if (topic.startsWith(`${NET.root}/coin/`)){ onCoinMessage(topic, buf); return; }
+  if (topic.startsWith(`${NET.root}/wisdom/`)){ onWisdomMessage(topic, buf); return; }
   const id = topic.split('/').pop();
   if (!/^[0-9a-f]{16}$/.test(id) || id === NET.id) return;
   const key = 'm:' + id;
@@ -1427,6 +1448,7 @@ async function startMqtt(){
       ever = true; if (!NET.connectedAt) NET.connectedAt = performance.now();
       c.subscribe(`${NET.root}/p/+`, { qos: 0 });
       c.subscribe(`${NET.root}/coin/+`, { qos: 0 });
+      c.__wTopic = null; if (NET.entered) subscribeWisdom();
       if (!c.__viewSent){ c.__viewSent = true; c.publish(`${NET.root}/v/${NET.id}`, '1', { qos: 0 }); }   // one anonymous 'page opened' ping for visitor stats
       if (NET.entered){ lastSent = ''; sendPresence(true); }
       updateCount();
