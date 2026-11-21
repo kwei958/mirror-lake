@@ -139,7 +139,7 @@
   </div>
   <div class="seg card" id="periods">
     <span>호수 위 지수</span>
-    <button data-p="1M">1개월</button><button data-p="3M" class="on">3개월</button><button data-p="6M">6개월</button><button data-p="1Y">1년</button>
+    <button data-p="1M">1개월</button><button data-p="3M">3개월</button><button data-p="6M">6개월</button><button data-p="1Y" class="on">1년</button>
   </div>
   <div id="asof" class="card"></div>
 </div>
@@ -605,8 +605,8 @@ const SERIES = [
   { name:'S&P 500', sub:'미국 대형주 500', get data(){ return MARKET.sp; } },
   { name:'NASDAQ 100', sub:'나스닥 대형 비금융 100', get data(){ return MARKET.nq; } }
 ];
-const PERIODS = { '1M':[22,'1개월'], '3M':[63,'3개월'], '6M':[126,'6개월'], '1Y':[9999,'1년'] };
-let period = store.get('mk_period') || '3M';
+const PERIODS = { '1M':[22,'1개월'], '3M':[63,'3개월'], '6M':[126,'6개월'], '1Y':[252,'1년'] };
+let period = store.get('mk_period') || '1Y';
 const fmt = v => v.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const pct = v => (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 const dlabel = (d, long) => { const [y,m,dd] = d.split('-'); return long ? `${y.slice(2)}.${m}` : `${m}.${dd}`; };
