@@ -1,0 +1,28 @@
+name: Visitor stats
+on:
+  schedule:
+    - cron: "7 */4 * * *"   # every 4 hours (KST 01:07, 05:07, 09:07, 13:07, 17:07, 21:07)
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: visitor-stats
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 250
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save mqtt@5.10.1
+      - run: node scripts/collect_stats.mjs
+      - name: Save stats
+        run: |
+          git config user.name "lake-bot"
+          git config user.email "lake-bot@users.noreply.github.com"
+          git add stats
+          git commit -m "Visitor stats $(date -u +%FT%H:%MZ)" || exit 0
+          for i in 1 2 3 4 5; do git pull --rebase -q && git push && break; sleep 7; done

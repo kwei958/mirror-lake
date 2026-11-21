@@ -707,6 +707,22 @@ function drawChart(cv, s){
 }
 const charts = [];
 const chartRoot = new THREE.Group(); chartRoot.position.set(0, 0, -16); scene.add(chartRoot);   // the pair slowly turns to face the viewer
+// ---------------- 투쓰, the lake guardian (a virtual host everyone sees) ----------------
+let guardian = null;
+function buildGuardian(){
+  // a flat stone island under the charts
+  const isl = new Batch();
+  isl.add(new THREE.CylinderGeometry(4.6, 5.1, .5, 30), [0, -.05, 0], null, 1, '#a89f8a');
+  isl.add(new THREE.CylinderGeometry(4.2, 4.6, .12, 30), [0, .26, 0], null, 1, '#b8af98');
+  for (let k = 0; k < 16; k++){ const a = k/16*Math.PI*2 + .1; isl.add(new THREE.DodecahedronGeometry(.35 + (k%3)*.12, 0), [Math.cos(a)*4.8, .05, Math.sin(a)*4.8], [k,k*2,0], [1,.55,1], ['#9c9583','#8f8a7c','#b5ab94'][k%3]); }
+  for (let k = 0; k < 6; k++){ const a = k/6*Math.PI*2 + .5; isl.add(new THREE.SphereGeometry(.5, 8, 6), [Math.cos(a)*3.9, .3, Math.sin(a)*3.9], null, [1,.45,1], ['#5d8a3c','#6c9a43'][k%2]); }
+  const m = isl.build(natureMat); m.position.set(chartRoot.position.x, 0, chartRoot.position.z); scene.add(m);
+  // the guardian rides with the charts, so it always faces whoever is looking
+  guardian = new Avatar('투쓰 · 호숫가 지킴이', 0, false, true);
+  chartRoot.add(guardian.root);
+  guardian.root.position.set(0, .32, 3.3); guardian.root.scale.setScalar(2.4); guardian.tag.scale.multiplyScalar(.62);
+  guardian.sit = true; guardian.heading = 0; guardian.root.rotation.y = 0; guardian.nextEmote = 5;
+}
 function buildCharts(){
   SERIES.forEach((s, i) => {
     const cv = document.createElement('canvas'); cv.width = 1400; cv.height = 860;
@@ -796,7 +812,14 @@ const MAT = {
   mouth: new THREE.MeshStandardMaterial({ color:0x8a3b2a, roughness:.6 }),
   leaf: new THREE.MeshStandardMaterial({ color:0x6aa33f, roughness:.6 }),
 };
-function makeTooth(ci){
+// the lake guardian's larger cape
+const GUARD = {
+  cape: new THREE.CylinderGeometry(.6, 1.12, 1.25, 28, 4, true, Math.PI - 1.5, 3.0),
+  hem: new THREE.TorusGeometry(1.12, .035, 6, 40, 3.0),
+  gold: new THREE.MeshStandardMaterial({ color:0xc9a043, roughness:.35, metalness:.55 }),
+};
+GUARD.hem.rotateZ(Math.PI - 1.5 + Math.PI/2);   // line the hem up with the open cape
+function makeTooth(ci, big=false){
   const capeMat = new THREE.MeshStandardMaterial({ color:CAPES[ci] ?? CAPES[0], roughness:.75, side:THREE.DoubleSide });
   const G = toothGeo, root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const add = (geo, mat, parent, p, r, s) => { const m = new THREE.Mesh(geo, mat); if (p) m.position.set(...p); if (r) m.rotation.set(...r); if (s) m.scale.set(...s); m.castShadow = true; parent.add(m); return m; };
@@ -816,10 +839,13 @@ function makeTooth(ci){
   add(G.stem, MAT.leaf, sprout, [0,.1,0]);
   for (const sx of [-1,1]) add(G.leaf, MAT.leaf, sprout, [sx*.11,.24,0], [0,0,sx*.5], [1.4,.28,.75]);
   add(G.scarf, capeMat, body, [0,.6,0], [Math.PI/2,0,0], [1,1,1]);
-  add(G.knot, capeMat, body, [0,.58,.5]);
+  add(G.knot, big ? GUARD.gold : capeMat, body, [0,.58,.5], null, big ? [1.3,1.3,1.3] : null);
   add(G.tail, capeMat, body, [-.06,.45,.52], [0,0,.3]); add(G.tail, capeMat, body, [.06,.45,.52], [0,0,-.3]);
-  const capePv = new THREE.Group(); capePv.position.set(0,.64,0); body.add(capePv);
-  add(G.cape, capeMat, capePv, [0,-.36,0]);
+  const capePv = new THREE.Group(); capePv.position.set(0, big ? .74 : .64, 0); body.add(capePv);
+  if (big){   // the guardian's long cape with a gold hem
+    add(GUARD.cape, capeMat, capePv, [0,-.62,0]);
+    add(GUARD.hem, GUARD.gold, capePv, [0,-1.2,0], [Math.PI/2,0,0]);
+  } else add(G.cape, capeMat, capePv, [0,-.36,0]);
   const arms = [];
   for (const sx of [-1,1]){ const pv = new THREE.Group(); pv.position.set(sx*.5,.74,0); body.add(pv); add(G.arm, MAT.white, pv, [0,-.12,0]); pv.rotation.z = sx*.55; arms.push(pv); }
   return { root, body, legs, arms, sprout, capePv, capeMat };
@@ -859,9 +885,9 @@ function getBubble(k){
 }
 
 class Avatar {
-  constructor(name, ci, me=false){
-    this.me = me; this.ci = ci; this.parts = makeTooth(ci); this.root = this.parts.root;
-    this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map:makeTagTexture(name, me), transparent:true, depthWrite:false, toneMapped:false }));
+  constructor(name, ci, me=false, big=false){
+    this.me = me; this.ci = ci; this.parts = makeTooth(ci, big); this.root = this.parts.root;
+    this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map:makeTagTexture(name, me || big), transparent:true, depthWrite:false, toneMapped:false }));
     this.tag.scale.set(2.3, .575, 1); this.tag.position.y = 1.98; this.tag.renderOrder = 10; this.root.add(this.tag);
     this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthWrite:false, toneMapped:false, opacity:0 }));
     this.bubble.position.y = 2.95; this.bubble.scale.set(.01,.01,1); this.bubble.renderOrder = 11; this.root.add(this.bubble);
@@ -1041,7 +1067,7 @@ function sitOnBench(bi){
   const i = free[0];
   bench = { bi, seat: i, t0: performance.now(), moved: 0, lx: null, ly: null, released: false };
   [player.x, player.z] = benchToWorld(B, BENCH_SEATS[i], -.05); me.heading = B.face; me.speed = 0; me.sit = true;
-  document.body.classList.add('bench');
+  document.body.classList.add('bench'); me.tag.visible = false;   // nothing between you and the water
   toast('벤치에 앉았어요 · 커서를 움직이면 일어나요');
   lastSent = ''; sendPresence(true);
 }
@@ -1051,7 +1077,7 @@ function standFromBench(){
   [player.x, player.z] = benchToWorld(B, BENCH_SEATS[bench.seat], 1.5); player.y = B.base;
   bench = null; benchArmed = false;
   me.sit = document.body.classList.contains('zen');
-  document.body.classList.remove('bench');
+  document.body.classList.remove('bench'); me.tag.visible = true;
   lastSent = ''; sendPresence(true);
 }
 addEventListener('pointermove', e => {
@@ -1210,6 +1236,7 @@ async function startMqtt(){
     c.on('connect', () => {
       ever = true; if (!NET.connectedAt) NET.connectedAt = performance.now();
       c.subscribe(`${NET.root}/p/+`, { qos: 0 });
+      if (!c.__viewSent){ c.__viewSent = true; c.publish(`${NET.root}/v/${NET.id}`, '1', { qos: 0 }); }   // one anonymous 'page opened' ping for visitor stats
       if (NET.entered){ lastSent = ''; sendPresence(true); }
       updateCount();
     });
@@ -1378,6 +1405,12 @@ function frame(){
   }
   water.material.uniforms.time.value = t;
   water.material.uniforms.wind.value = wind.level;
+  // the guardian sits in front of the charts and greets now and then
+  if (guardian){
+    guardian.update(dt, t);
+    guardian.nextEmote -= dt;
+    if (guardian.nextEmote <= 0){ guardian.playEmote(['calm','hello','thanks','love','calm'][Math.floor(Math.random()*5)]); guardian.nextEmote = 18 + Math.random()*20; }
+  }
   // others
   for (const o of others.values()){
     const p = o.av.root.position, k = 1 - Math.exp(-dt*9);
@@ -1423,7 +1456,7 @@ function frame(){
     ]);
   } catch (e) {}
   await Promise.race([loadMarket(), new Promise(r => setTimeout(r, 2500))]);
-  buildSigns(); buildCharts();
+  buildSigns(); buildCharts(); buildGuardian();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('hide'), 250);
   if (!isTouch) setTimeout(() => $('#nick').focus(), 600);
