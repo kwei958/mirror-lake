@@ -123,6 +123,29 @@
     #quoteWrap{bottom:236px}
   }
   #zenFloat{display:none}
+  #wisdomLine{margin-top:5px;font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+  #wisdomLine b{font:700 16px "Gowun Batang",serif;color:var(--ink)}
+  #wisdomLine small{font-size:12px;color:var(--ink2)}
+  #wisdomLine.full b{color:var(--gold)}
+  .wcoin{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:700 10px/1 "Gowun Batang",serif;font-style:normal;color:#6b4a12;
+    background:radial-gradient(circle at 35% 30%,#fff1b8,#e0b54a 55%,#a97a1c);box-shadow:inset 0 0 0 1.5px #b8892a}
+  #wisdomLine.pop .wcoin{animation:wpop .6s ease}
+  @keyframes wpop{0%{transform:scale(1)}40%{transform:scale(1.6) rotate(-12deg)}100%{transform:scale(1)}}
+  #praise{position:fixed;left:50%;top:21%;transform:translate(-50%,-10px) scale(.96);z-index:25;pointer-events:none;opacity:0;transition:opacity .7s ease, transform .7s ease}
+  #praise.show{opacity:1;transform:translate(-50%,0) scale(1)}
+  #praise .pcard{min-width:min(360px,84vw);max-width:86vw;padding:18px 26px 16px;border-radius:18px;text-align:center;background:rgba(253,248,232,.95);
+    border:1px solid rgba(184,145,58,.6);box-shadow:0 10px 40px rgba(90,70,10,.25), inset 0 0 0 4px rgba(255,255,255,.5)}
+  #praise .pico{font-size:18px;color:var(--gold);letter-spacing:.4em}
+  #praise .ptitle{margin-top:4px;font:700 22px/1.4 "Gowun Batang",serif;color:var(--ink);word-break:keep-all}
+  #praise .psub{margin-top:6px;font-size:13.5px;color:var(--ink2);word-break:keep-all}
+  #praise.gold .pcard{background:linear-gradient(180deg,rgba(255,248,222,.97),rgba(250,236,190,.97));border-color:#c9a043}
+  #praise.gold .ptitle{color:#7a5410}
+  #jumpFloat{display:none}
+  body.touch #jumpFloat{display:flex;position:fixed;right:14px;bottom:96px;z-index:6;width:62px;height:62px;border-radius:50%;flex-direction:column;align-items:center;justify-content:center;gap:0;
+    border:1px solid var(--line);background:var(--paper2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:var(--shadow);color:var(--ink);padding:0;touch-action:manipulation}
+  #jumpFloat b{font-size:22px;line-height:1;font-weight:400}
+  #jumpFloat em{font-style:normal;font-size:11px;color:var(--ink2)}
+  @media (max-width:640px){ body.touch #jumpFloat{bottom:218px} }
   @media (max-width:640px){
     #emotes .emo.zen{display:none}
     #zenFloat{display:flex;position:fixed;right:14px;bottom:134px;z-index:6;width:74px;height:74px;border-radius:50%;flex-direction:column;align-items:center;justify-content:center;gap:1px;
@@ -145,6 +168,7 @@
 <div id="brand" class="hud card fadeable">
   <h1>명경지수 호숫가<small>위즈덤투스</small></h1>
   <div id="jisuLine">명경<b>'지수'</b> = <span id="jisu">0</span><small> / 50</small></div>
+  <div id="wisdomLine"><i class="wcoin">W</i> 오늘의 지혜 <b id="wcount">0</b><small> / 5</small></div>
   <div id="online" class="solo"><i></i><span id="onlineTxt">혼자 산책 중</span></div>
 </div>
 
@@ -171,6 +195,8 @@
 <div id="breath"><div id="ring"></div><div id="breathTxt">들이쉬고</div></div>
 <div id="quoteWrap"><div id="quote"><div id="quoteText"></div><div id="quoteBy"></div></div></div>
 <div id="toast" class="card"></div>
+<div id="praise"><div class="pcard"><div class="pico">✦</div><div class="ptitle"></div><div class="psub"></div></div></div>
+<button id="jumpFloat" title="점프"><b>⤒</b><em>점프</em></button>
 
 <div id="entry">
   <form class="card" id="entryForm" autocomplete="off">
@@ -340,6 +366,7 @@ const GLOW = glowTexture();
 const lakeR = th => 2*(20 + 1.5*Math.sin(3*th) + 1.0*Math.cos(5*th+1));   // twice the original lake
 const lakePts = (off=0, n=200) => { const p=[]; for (let i=0;i<n;i++){ const th=i/n*Math.PI*2, r=lakeR(th)+off; p.push(new THREE.Vector2(Math.cos(th)*r, -Math.sin(th)*r)); } return p; };
 const colliders = [];
+const treeSpots = [];   // where coins can hide
 const PAV = { x: 60, z: -6 };
 const DECK = { x: 0, z: 3, r: 4.6 };                         // round deck in the middle of the lake
 const onPier = (x,z) => (Math.abs(x) < 1.2 && z > 7.2 && z < 38.5) || Math.hypot(x-DECK.x, z-DECK.z) < DECK.r - .15;
@@ -429,14 +456,14 @@ function addTree(x, z, s=1){
     const r = R(1.0,1.7)*s;
     trees.add(new THREE.IcosahedronGeometry(r, 1), [x+R(-1,1)*s, h + R(-.5,1.3)*s, z+R(-1,1)*s], [R(0,3),R(0,3),R(0,3)], [1, R(.75,1), 1], SP(FOLIAGE));
   }
-  colliders.push({ x, z, r: 0.45*s });
+  colliders.push({ x, z, r: 0.45*s }); treeSpots.push({ x, z, r: 0.45*s });
 }
 function addPine(x, z, s=1){
   trees.add(new THREE.CylinderGeometry(0.12*s, 0.2*s, 1.6*s, 6), [x, .8*s, z], null, 1, '#5b432c');
   for (let i=0;i<3;i++){
     trees.add(new THREE.ConeGeometry((1.7-i*.42)*s, 2.2*s, 7), [x, (1.9+i*1.15)*s, z], [0,R(0,2),0], 1, SP(['#3f6b35','#4a7a3c','#36602f']));
   }
-  colliders.push({ x, z, r: 0.4*s });
+  colliders.push({ x, z, r: 0.4*s }); treeSpots.push({ x, z, r: 0.4*s });
 }
 const clearOf = (x,z) => {
   const d = Math.hypot(x,z);
@@ -707,6 +734,158 @@ function drawChart(cv, s){
 }
 const charts = [];
 const chartRoot = new THREE.Group(); chartRoot.position.set(0, 0, -16); scene.add(chartRoot);   // the pair slowly turns to face the viewer
+// ---------------- daily praise moments ----------------
+const todayKey = () => new Date(Date.now() + 9*3600e3).toISOString().slice(0, 10);   // Korean date
+function praiseSeen(){ try { return JSON.parse(store.get('mk_praise_' + todayKey()) || '[]'); } catch(e){ return []; } }
+const praiseQueue = []; let praiseBusy = false;
+function praise(id, title, sub, opts = {}){
+  if (!opts.repeat){ const seen = praiseSeen(); if (seen.includes(id)) return; seen.push(id); store.set('mk_praise_' + todayKey(), JSON.stringify(seen)); }
+  praiseQueue.push({ title, sub, gold: !!opts.gold }); if (!praiseBusy) nextPraise();
+}
+function nextPraise(){
+  const p = praiseQueue.shift(); const el = $('#praise');
+  if (!p){ praiseBusy = false; return; }
+  praiseBusy = true;
+  el.querySelector('.ptitle').textContent = p.title; el.querySelector('.psub').textContent = p.sub;
+  el.classList.toggle('gold', p.gold); el.classList.add('show');
+  setTimeout(() => { el.classList.remove('show'); setTimeout(nextPraise, 900); }, p.gold ? 5200 : 4200);
+}
+// a full walk around the lake
+let lapPrev = null, lapSum = 0;
+function camInTree(x, z, y){
+  for (const t of treeSpots){ const R = t.r*4.6, R2 = R*R; if ((player.x-t.x)**2 + (player.z-t.z)**2 < R2) continue;   // the tree you stand under doesn't count
+    if ((x-t.x)*(x-t.x) + (z-t.z)*(z-t.z) < R2 && y < t.r*16) return true; }
+  return false;
+}
+function treeBetween(c){
+  for (const f of [.3, .5, .7, .85, 1]){
+    const x = player.x + (c.x - player.x)*f, z = player.z + (c.z - player.z)*f, y = player.y + 1.4 + (c.y - player.y - 1.4)*f;
+    if (camInTree(x, z, y)) return true;
+  }
+  return false;
+}
+function trackLap(){
+  const d = Math.hypot(player.x, player.z);
+  if (d < 36 || d > 58){ lapPrev = null; return; }
+  const th = Math.atan2(player.z, player.x);
+  if (lapPrev !== null){ let dth = th - lapPrev; if (dth > Math.PI) dth -= Math.PI*2; if (dth < -Math.PI) dth += Math.PI*2; lapSum += dth; }
+  lapPrev = th;
+  if (Math.abs(lapSum) >= Math.PI*2){ lapSum = 0; praise('lap', '호숫가를 한 바퀴 걸었어요.', '몸도 마음도 한결 가벼워졌어요.'); }
+}
+function checkMoments(){
+  if (bench && !bench.peace && performance.now() - bench.t0 > 180000){
+    bench.peace = true; me.playEmote('calm');
+    praise('peace', '이너피스를 얻었어요.', '3분 동안 고요한 물결을 바라봤어요.', { repeat: true, gold: true });
+  }
+  if (NET.enteredAt && performance.now() - NET.enteredAt > 600000) praise('stay10', '10분의 쉼표를 가졌어요.', '시장의 소음에서 잠시 멀어졌어요.');
+}
+
+// ---------------- W coins: a quiet treasure hunt everyone shares ----------------
+const COIN_SLOTS = 15, COIN_GOAL = 5, COIN_RESPAWN = 5000;
+const coins = Array.from({ length: COIN_SLOTS }, () => ({ g: 0, visibleAt: 0, spot: null, mesh: null, glint: null, tw: Math.random()*6 }));
+const coinSpots = [];
+let wisdom = 0;
+function hash32(n){ n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return n >>> 0; }
+function placeCoin(i){
+  if (!coinSpots.length) return;
+  const c = coins[i]; let k = hash32(i*7919 + c.g*104729 + 17) % coinSpots.length;
+  for (let n = 0; n < coinSpots.length; n++){   // never two coins in one hiding place
+    if (!coins.some((o, j) => j !== i && o.spot === coinSpots[k])) break;
+    k = (k + 1) % coinSpots.length;
+  }
+  c.spot = coinSpots[k];
+  if (c.mesh){ c.mesh.position.set(c.spot.x, c.spot.y, c.spot.z); c.glint.position.copy(c.mesh.position); }
+}
+function wTexture(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d');
+  const rg = g.createRadialGradient(48, 42, 6, 64, 64, 64); rg.addColorStop(0, '#fff3c4'); rg.addColorStop(.55, '#e2b64c'); rg.addColorStop(1, '#a87a1e');
+  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = '#b48626'; g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 54, 0, Math.PI*2); g.stroke();
+  g.fillStyle = '#7a5410'; g.font = '700 70px "Gowun Batang",serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('W', 64, 69);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function buildCoins(){
+  // hiding places everyone agrees on: the world comes from the same seed for every visitor
+  const add = (x, z, y = .32) => { if (Math.hypot(x, z) < 102){ const gy = groundAt(x, z); if (gy !== null) coinSpots.push({ x, z, y: y + gy }); } };
+  for (const t of treeSpots){ const d = Math.hypot(t.x, t.z) || 1, o = t.r*4.6 + .3; add(t.x + t.x/d*o, t.z + t.z/d*o); }   // just behind trees, outside the branches
+  for (const [x, z] of lanternSpots){ const d = Math.hypot(x, z) || 1; add(x + x/d*.9, z + z/d*.9); }                     // behind lanterns
+  for (const B of BENCHES) for (const sx of [-1.2, 1.2]){ const [x, z] = benchToWorld(B, sx, .05); coinSpots.push({ x, z, y: B.base + .16 }); }   // under benches
+  for (const [dx, dz] of [[-2.6,-2.1],[2.6,2.1],[-2.6,2.1],[2.6,-2.1]]) add(PAV.x + dx, PAV.z + dz);                    // pavilion corners
+  for (const z of [12, 20, 28]) add(z === 20 ? -.85 : .85, z);                                                         // along the pier
+  for (let k = 0; k < 24; k++){ const th = k/24*Math.PI*2 + .13, rr = lakeR(th) + 1.3; add(Math.cos(th)*rr, Math.sin(th)*rr); }   // among the shore stones
+  const tex = wTexture();
+  const face = new THREE.MeshStandardMaterial({ map: tex, metalness: .35, roughness: .4, emissive: 0x6a4a08, emissiveIntensity: .55 });   // a soft gold even in backlight
+  const rim = new THREE.MeshStandardMaterial({ color: 0xc9a043, metalness: .7, roughness: .3 });
+  const geo = new THREE.CylinderGeometry(.3, .3, .07, 28); geo.rotateX(Math.PI/2);
+  coins.forEach((c, i) => {
+    c.mesh = new THREE.Mesh(geo, [rim, face, face]); c.mesh.castShadow = true; scene.add(c.mesh);
+    c.glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xfff4c8, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    scene.add(c.glint); placeCoin(i);
+  });
+}
+const coinBursts = [];
+function coinBurst(p){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffe08a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 1 }));
+  s.position.copy(p); s.scale.set(.4, .4, 1); scene.add(s); coinBursts.push({ s, t: 0 });
+}
+function updateCoins(dt, t){
+  const now = performance.now();
+  for (const c of coins){
+    if (!c.mesh) continue;
+    const show = now >= c.visibleAt;
+    c.mesh.visible = show;
+    if (!show){ c.glint.material.opacity = 0; continue; }
+    c.mesh.rotation.y += dt*1.3;
+    c.mesh.position.y = c.spot.y + Math.sin(t*1.8 + c.tw)*.05;
+    // an occasional glint: just enough to be found
+    c.tw += dt; const ph = (c.tw % 7) / 7;
+    const a = ph > .92 ? Math.sin((ph - .92)/.08*Math.PI) : 0;
+    c.glint.material.opacity = a*.9; c.glint.scale.setScalar(.25 + a*.9); c.glint.position.set(c.mesh.position.x, c.mesh.position.y + .05, c.mesh.position.z);
+  }
+  for (let i = coinBursts.length - 1; i >= 0; i--){
+    const b = coinBursts[i]; b.t += dt;
+    b.s.scale.setScalar(.4 + b.t*3.5); b.s.position.y += dt*1.2; b.s.material.opacity = Math.max(0, 1 - b.t/.7);
+    if (b.t > .7){ scene.remove(b.s); b.s.material.dispose(); coinBursts.splice(i, 1); }
+  }
+}
+function updateWisdom(pop){
+  try { wisdom = parseInt(store.get('mk_w_' + todayKey()) || '0', 10) || 0; } catch(e){ wisdom = 0; }
+  const el = $('#wisdomLine'); $('#wcount').textContent = wisdom;
+  el.classList.toggle('full', wisdom >= COIN_GOAL);
+  if (pop){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+}
+function checkCoins(){
+  if (!me || state !== 'play') return;
+  const now = performance.now();
+  coins.forEach((c, i) => {
+    if (!c.spot || now < c.visibleAt) return;
+    if (Math.hypot(c.spot.x - player.x, c.spot.z - player.z) < 1.0 && Math.abs(c.spot.y - player.y) < 1.6) collectCoin(i);
+  });
+}
+function collectCoin(i){
+  const c = coins[i];
+  coinBurst(c.mesh.position.clone());
+  c.g += 1; c.visibleAt = performance.now() + COIN_RESPAWN; placeCoin(i);
+  const payload = JSON.stringify({ g: c.g, t: Date.now() });
+  for (const cl of NET.clients) if (cl.connected) cl.publish(`${NET.root}/coin/${i}`, payload, { retain: true, qos: 0 });
+  store.set('mk_w_' + todayKey(), String(wisdom + 1)); updateWisdom(true);
+  if (wisdom === COIN_GOAL){
+    me.playEmote('joy'); if (guardian) guardian.playEmote('cheer');
+    praise('wisdom', '오늘도 지혜가 채워졌어요.', 'W 다섯 개를 모두 찾았어요 · 내일 또 숨겨 둘게요', { gold: true });
+  } else if (wisdom < COIN_GOAL) toast(`W ${wisdom}/${COIN_GOAL} · 지혜 한 조각을 찾았어요`);
+  else toast(`오늘 ${wisdom}번째 지혜 · 넘치는 지혜는 나눠 주세요`);
+}
+function onCoinMessage(topic, buf){
+  const i = parseInt(topic.split('/').pop(), 10);
+  if (!(i >= 0 && i < COIN_SLOTS) || !buf || !buf.length || buf.length > 200) return;
+  let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch(e){ return; }
+  const g = m && m.g; if (!Number.isInteger(g) || g < 0 || g > 1e9) return;
+  const c = coins[i]; if (g <= c.g) return;
+  const age = Date.now() - (typeof m.t === 'number' ? m.t : 0);
+  if (c.mesh && c.mesh.visible) coinBurst(c.mesh.position.clone());   // someone else found it
+  c.g = g; c.visibleAt = performance.now() + clamp(COIN_RESPAWN - age, 0, COIN_RESPAWN); placeCoin(i);
+}
+
 // ---------------- 투쓰, the lake guardian (a virtual host everyone sees) ----------------
 let guardian = null;
 function buildGuardian(){
@@ -891,7 +1070,7 @@ class Avatar {
     this.tag.scale.set(2.3, .575, 1); this.tag.position.y = 1.98; this.tag.renderOrder = 10; this.root.add(this.tag);
     this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthWrite:false, toneMapped:false, opacity:0 }));
     this.bubble.position.y = 2.95; this.bubble.scale.set(.01,.01,1); this.bubble.renderOrder = 11; this.root.add(this.bubble);
-    this.name = name; this.walk = 0; this.speed = 0; this.emote = null; this.et = 99; this.sit = false; this.sitAmt = 0; this.heading = Math.PI;
+    this.name = name; this.walk = 0; this.speed = 0; this.emote = null; this.et = 99; this.sit = false; this.sitAmt = 0; this.air = false; this.heading = Math.PI;
     scene.add(this.root);
   }
   setName(n){ if (n === this.name) return; this.name = n; this.tag.material.map.dispose(); this.tag.material.map = makeTagTexture(n, this.me); this.tag.material.needsUpdate = true; }
@@ -909,6 +1088,7 @@ class Avatar {
     let sproutZ = Math.sin(t*2.1)*.12 + (moving ? sw*.18 : 0), sproutX = 0;
     // seated meditation pose
     legX0 = legX0*(1-s) - 1.25*s; legX1 = legX1*(1-s) - 1.25*s;
+    if (this.air){ legX0 = -.85; legX1 = -.55; aL = 1.35; aR = -1.35; }   // tuck in mid-jump
     if (s > .01){ aL = aL*(1-s) + .25*s; aR = aR*(1-s) - .25*s; axL = axL*(1-s) - .9*s; axR = axR*(1-s) - .9*s; by += Math.sin(t*0.63)*0.012*s; }
     // emotes
     if (this.et < 2.8){
@@ -952,7 +1132,8 @@ const wind = { level:.35, target:.35, next:2 };
 
 // ---------------- player & input ----------------
 let me = null, state = 'intro';
-const player = { x: 0, z: 55, y: 0, vy: 0 };
+const player = { x: 0, z: 55, y: 0, vy: 0, grounded: true, jvx: 0, jvz: 0 };
+let jumpQueued = false;
 let myName = store.get('mk_name') || '', myColor = parseInt(store.get('mk_color') || '0', 10) || 0;
 let camYaw = 0, camPitch = .3, camDist = 9.5;
 const keys = new Set();
@@ -974,6 +1155,7 @@ addEventListener('keydown', e => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(k)) e.preventDefault();
   keys.add(k.length === 1 ? k.toLowerCase() : k);
   if (/^[1-8]$/.test(k)) doEmote(EMOTES[+k-1].k);
+  if (k === ' ' && !e.repeat) jumpQueued = true;
   if (k === 'm' || k === 'M' || k === 'ㅡ') toggleZen();
   if (k === 'q' || k === 'Q') camYaw += .25;
   if (k === 'e' || k === 'E') camYaw -= .25;
@@ -999,6 +1181,9 @@ addEventListener('blur', () => keys.clear());
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
 }
 
+// on-screen buttons never keep keyboard focus (so Space stays a jump)
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('.hud button, #zenFloat, #jumpFloat')) e.preventDefault(); }, true);
+$('#jumpFloat').addEventListener('click', () => { if (state === 'play') jumpQueued = true; });
 // emote bar
 {
   const bar = $('#emotes');
@@ -1019,6 +1204,7 @@ function doEmote(k){
   const now = performance.now(); if (now - lastEmoteAt < 700) return; lastEmoteAt = now;
   if (me.sit && k !== 'calm') setZen(false);
   me.playEmote(k); emoteKey = k; emoteStamp = Date.now();
+  if (k === 'hello'){ for (const o of others.values()){ const p = o.av.root.position; if (Math.hypot(p.x - player.x, p.z - player.z) < 9){ praise('greet', '따뜻한 인사가 호숫가를 밝혔어요.', '함께 머무는 사람에게 마음을 건넸어요.'); break; } } }
 }
 
 // meditation
@@ -1069,6 +1255,7 @@ function sitOnBench(bi){
   [player.x, player.z] = benchToWorld(B, BENCH_SEATS[i], -.05); me.heading = B.face; me.speed = 0; me.sit = true;
   document.body.classList.add('bench'); me.tag.visible = false;   // nothing between you and the water
   toast('벤치에 앉았어요 · 커서를 움직이면 일어나요');
+  if (bi === 0) setTimeout(() => praise('guardian', '투쓰와 함께 차트를 바라봐요.', '오늘의 숫자보다, 긴 흐름을 봐요.'), 3500);
   lastSent = ''; sendPresence(true);
 }
 function standFromBench(){
@@ -1118,7 +1305,9 @@ const cleanName = s => String(s ?? '').replace(BAD_CH, '').replace(/\s+/g, ' ').
     if (!me){ me = new Avatar(myName, myColor, true); me.root.position.set(player.x, 0, player.z); me.heading = Math.PI; me.root.rotation.y = Math.PI; setTimeout(() => me && me.playEmote('hello'), 900); emoteKey = 'hello'; emoteStamp = Date.now() + 900; }
     else { me.setName(myName); me.setColor(myColor); }
     $('#entry').classList.add('hide'); $('#nick').blur();
+    const firstEnter = state === 'intro';
     state = 'play'; lastSent = ''; sendPresence(true); updateCount();
+    if (firstEnter) setTimeout(() => praise('welcome', `어서 오세요, ${myName}님`, '맑은 물가에서 잠시 쉬어 가세요 · 곳곳에 W 코인이 숨어 있어요'), 1800);
   });
   $('#btnName').addEventListener('click', () => { state = 'menu'; keys.clear(); $('#entry').classList.remove('hide'); $('#go').textContent = '바꾸기'; setTimeout(() => $('#nick').focus(), 50); });
 }
@@ -1134,7 +1323,7 @@ const NET = {
 let room = null; const others = new Map(); let lastSent = '', lastSendT = 0, lastBeat = 0;
 const remote = new Map();   // key -> { pr, seen, t }
 function myPresence(){
-  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, b: bench ? bench.bi * 3 + bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
+  return { n: myName, c: myColor, x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), r: +((me?.heading ?? 0)).toFixed(2), s: me?.sit ? 1 : 0, j: player.grounded ? 0 : 1, b: bench ? bench.bi * 3 + bench.seat : -1, e: emoteKey, et: emoteStamp, jt: NET.jt };
 }
 function sendPresence(force){
   if (!me || state === 'intro' || !NET.entered) return;
@@ -1160,11 +1349,11 @@ function upsertPeer(key, pr){
     if (others.size >= 80) return;
     o = { av: new Avatar(name, ci, false), tx:0, tz:0, ty:0, et: pr.et };
     others.set(key, o);
-    o.av.root.position.set(num(pr.x,-60,60,0), num(pr.y,0,1,0), num(pr.z,-60,60,0));
+    o.av.root.position.set(num(pr.x,-60,60,0), num(pr.y,0,3,0), num(pr.z,-60,60,0));
   }
   o.av.setName(name); o.av.setColor(ci);
-  o.tx = num(pr.x,-60,60,0); o.tz = num(pr.z,-60,60,0); o.ty = num(pr.y,0,1,0);
-  o.av.heading = num(pr.r,-20,20,0); o.av.sit = pr.s === 1;
+  o.tx = num(pr.x,-60,60,0); o.tz = num(pr.z,-60,60,0); o.ty = num(pr.y,0,3,0);
+  o.av.heading = num(pr.r,-20,20,0); o.av.sit = pr.s === 1; o.av.air = pr.j === 1;
   if (pr.et !== o.et){ o.et = pr.et; if (typeof pr.e === 'string' && EMO[pr.e]) o.av.playEmote(pr.e); }
 }
 function dropPeer(key){ const o = others.get(key); if (o){ o.av.dispose(); others.delete(key); } remote.delete(key); }
@@ -1208,6 +1397,7 @@ setInterval(() => {
 }, 1000);
 
 function onMqttMessage(topic, buf){
+  if (topic.startsWith(`${NET.root}/coin/`)){ onCoinMessage(topic, buf); return; }
   const id = topic.split('/').pop();
   if (!/^[0-9a-f]{16}$/.test(id) || id === NET.id) return;
   const key = 'm:' + id;
@@ -1236,6 +1426,7 @@ async function startMqtt(){
     c.on('connect', () => {
       ever = true; if (!NET.connectedAt) NET.connectedAt = performance.now();
       c.subscribe(`${NET.root}/p/+`, { qos: 0 });
+      c.subscribe(`${NET.root}/coin/+`, { qos: 0 });
       if (!c.__viewSent){ c.__viewSent = true; c.publish(`${NET.root}/v/${NET.id}`, '1', { qos: 0 }); }   // one anonymous 'page opened' ping for visitor stats
       if (NET.entered){ lastSent = ''; sendPresence(true); }
       updateCount();
@@ -1354,27 +1545,51 @@ function frame(){
     if (bench){
       // keys/joystick stand you up too, but only a fresh press (not the one that walked you here)
       if (m <= .08) bench.released = true; else if (bench.released) standFromBench();
+      if (jumpQueued){ jumpQueued = false; standFromBench(); }
       me.speed = 0;
-    } else if (m > .08){
-      if (me.sit) setZen(false);
-      const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
-      let dx = (fx*iz + rx*ix), dz = (fz*iz + rz*ix); const dl = Math.hypot(dx,dz) || 1; dx /= dl; dz /= dl;
-      const nx = player.x + dx*spd*dt, nz = player.z + dz*spd*dt;
+    } else {
+      let vx = 0, vz = 0;
+      if (m > .08){
+        if (me.sit) setZen(false);
+        const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+        let dx = (fx*iz + rx*ix), dz = (fz*iz + rz*ix); const dl = Math.hypot(dx,dz) || 1; dx /= dl; dz /= dl;
+        vx = dx*spd; vz = dz*spd; me.heading = Math.atan2(dx, dz);
+      }
+      // jump: straight up when standing still, along your path when moving
+      if (jumpQueued){
+        jumpQueued = false;
+        if (player.grounded){ player.vy = 6.4; player.grounded = false; player.jvx = vx; player.jvz = vz; if (me.sit) setZen(false); }
+      }
+      if (!player.grounded){
+        const k = Math.min(1, dt*1.4); player.jvx += (vx - player.jvx)*k; player.jvz += (vz - player.jvz)*k;
+        vx = player.jvx; vz = player.jvz;
+      }
       let moved = 0;
-      if (groundAt(nx, player.z) !== null){ moved += Math.abs(nx-player.x); player.x = nx; }
-      if (groundAt(player.x, nz) !== null){ moved += Math.abs(nz-player.z); player.z = nz; }
-      me.heading = Math.atan2(dx, dz);
-      me.speed = moved > 0.0001 ? spd : 0;
-      const nearBench = benchAt(player.x, player.z);
-      if (!benchArmed && nearBench < 0) benchArmed = true;
-      if (benchArmed && nearBench >= 0) sitOnBench(nearBench);
-    } else me.speed = 0;
+      if (vx || vz){
+        const nx = player.x + vx*dt, nz = player.z + vz*dt;
+        if (groundAt(nx, player.z) !== null){ moved += Math.abs(nx-player.x); player.x = nx; } else player.jvx = 0;
+        if (groundAt(player.x, nz) !== null){ moved += Math.abs(nz-player.z); player.z = nz; } else player.jvz = 0;
+      }
+      me.speed = player.grounded && moved > 0.0001 ? Math.hypot(vx, vz) : 0;
+      if (player.grounded && m > .08){
+        const nearBench = benchAt(player.x, player.z);
+        if (!benchArmed && nearBench < 0) benchArmed = true;
+        if (benchArmed && nearBench >= 0) sitOnBench(nearBench);
+      }
+      trackLap();
+    }
   } else if (me) me.speed = 0;
 
   if (me && state !== 'intro'){
     const gy = bench ? BENCHES[bench.bi].seatY : (groundAt(player.x, player.z) ?? player.y);
-    player.y += (gy - player.y) * Math.min(1, dt*12);
+    if (!player.grounded){
+      player.vy -= 19*dt; player.y += player.vy*dt;
+      if (player.y <= gy && player.vy <= 0){ player.y = gy; player.vy = 0; player.grounded = true; }
+    } else player.y += (gy - player.y) * Math.min(1, dt*12);
+    me.air = !player.grounded;
     me.root.position.set(player.x, player.y, player.z);
+    checkCoins();
+    checkMoments();
     me.update(dt, t);
     if (bench){
       // seated: drift slowly to a low view over the still water and its reflection
@@ -1387,7 +1602,19 @@ function frame(){
     } else {
     // camera follow
     const yawTarget = camYaw;
-    tmpV.set(player.x + Math.sin(yawTarget)*Math.cos(camPitch)*camDist, player.y + 1.2 + Math.sin(camPitch)*camDist, player.z + Math.cos(yawTarget)*Math.cos(camPitch)*camDist);
+    const camAt = d => tmpV.set(player.x + Math.sin(yawTarget)*Math.cos(camPitch)*d, player.y + 1.2 + Math.sin(camPitch)*d, player.z + Math.cos(yawTarget)*Math.cos(camPitch)*d);
+    let cd = camDist; camAt(cd);
+    if (treeBetween(tmpV)){
+      // a tree is in the way: first swing the camera around it, and only if that fails, come closer
+      let found = false;
+      for (const off of [.35, -.35, .7, -.7, 1.05, -1.05, 1.4, -1.4, 1.8, -1.8]){
+        const y2 = camYaw + off;
+        tmpV.set(player.x + Math.sin(y2)*Math.cos(camPitch)*cd, player.y + 1.2 + Math.sin(camPitch)*cd, player.z + Math.cos(y2)*Math.cos(camPitch)*cd);
+        if (!treeBetween(tmpV)){ camYaw = lerpAngle(camYaw, y2, Math.min(1, dt*3)); found = true; break; }
+      }
+      camAt(cd);
+      if (!found) while (cd > 1.4 && treeBetween(tmpV)){ cd -= .4; camAt(cd); }
+    }
     if (me.sit){ tmpV.y += 1.2; }
     camera.position.lerp(tmpV, 1 - Math.exp(-dt*5));
     lookV.lerp(new THREE.Vector3(player.x, player.y + 1.55 + (me.sit ? .8 : 0), player.z), 1 - Math.exp(-dt*8));
@@ -1405,6 +1632,7 @@ function frame(){
   }
   water.material.uniforms.time.value = t;
   water.material.uniforms.wind.value = wind.level;
+  updateCoins(dt, t);
   // the guardian sits in front of the charts and greets now and then
   if (guardian){
     guardian.update(dt, t);
@@ -1430,6 +1658,8 @@ function frame(){
     const e = .5 - .5*Math.cos(a*Math.PI);
     $('#ring').style.transform = `scale(${.55 + e*.75})`;
     $('#breathTxt').textContent = inhale ? '들이쉬고…' : '천천히 내쉬고…';
+    if (zenT > 30) praise('zen30', '마음이 한결 고요해졌어요.', '세 번의 깊은 호흡을 마쳤어요.');
+    if (zenT > 300) praise('zen300', '흔들리지 않는 마음에 한 걸음 가까워졌어요.', '5분 동안 호흡에 머물렀어요.');
     if (zenT > zenNext){ zenNext += 30; zenQ = (zenQ + 1) % QUOTES.length; showQuote(zenQ); }   // every 3 breaths (10 s each)
   }
   // roof turns translucent when you sit inside the pavilion
@@ -1456,7 +1686,7 @@ function frame(){
     ]);
   } catch (e) {}
   await Promise.race([loadMarket(), new Promise(r => setTimeout(r, 2500))]);
-  buildSigns(); buildCharts(); buildGuardian();
+  buildSigns(); buildCharts(); buildGuardian(); buildCoins(); updateWisdom(false);
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('hide'), 250);
   if (!isTouch) setTimeout(() => $('#nick').focus(), 600);
