@@ -1,18 +1,18 @@
 {
- "window_start": "2026-11-22T22:58:15.638Z",
- "window_end": "2026-11-23T02:58:00.069Z",
+ "window_start": "2026-11-23T02:58:15.721Z",
+ "window_end": "2026-11-23T06:58:00.048Z",
  "relay_connected_pct": 100,
- "page_opens": 6,
+ "page_opens": 13,
  "entered": 6,
  "distinct_nicknames": 6,
  "peak_concurrent": 1,
- "peak_at": "2026-11-23T00:04:13.312Z",
+ "peak_at": "2026-11-23T02:58:20.770Z",
  "still_here_at_end": 0,
- "avg_stay_min": 8,
- "median_stay_min": 2.6,
- "total_stay_hours": 0.8,
- "longest_stay_min": 40.2,
+ "avg_stay_min": 5.8,
+ "median_stay_min": 0.9,
+ "total_stay_hours": 0.58,
+ "longest_stay_min": 30.6,
  "sat_on_bench": 3,
- "meditated": 2,
- "gold_cape": 1
+ "meditated": 1,
+ "gold_cape": 0
 }
