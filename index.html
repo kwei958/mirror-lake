@@ -183,7 +183,7 @@
 
 <div id="brand" class="hud card fadeable">
   <h1>명경지수 호숫가<small>위즈덤투스</small></h1>
-  <div id="jisuLine">명경<b>'지수'</b> = <span id="jisu">0</span><small> / 50</small></div>
+  <div id="jisuLine">명경<b>'지수'</b> = <span id="jisu">0</span><small> / 100</small></div>
   <div id="wisdomLine"><i class="wcoin">W</i> 오늘의 지혜 <b id="wcount">0</b><small> / 5</small></div>
   <div id="online" class="solo"><i></i><span id="onlineTxt">혼자 산책 중</span></div>
 </div>
@@ -929,19 +929,20 @@ function onEggMessage(topic, buf){
 }
 
 // ---------------- W coins: a quiet treasure hunt everyone shares ----------------
-const COIN_SLOTS = 30, COIN_GOAL = 5, COIN_RESPAWN = 5000;
+const COIN_SLOTS = 45, COIN_GOAL = 5, COIN_RESPAWN = 5000, COIN_OPEN = 18;   // the first 18 coins shine in the open near the entrance
 const coins = Array.from({ length: COIN_SLOTS }, () => ({ g: 0, visibleAt: 0, spot: null, mesh: null, glint: null, tw: Math.random()*6 }));
-const coinSpots = [];
+const coinSpots = [], openSpots = [];
 let wisdom = 0;
 function hash32(n){ n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return n >>> 0; }
 function placeCoin(i){
   if (!coinSpots.length) return;
-  const c = coins[i]; let k = hash32(i*7919 + c.g*104729 + 17) % coinSpots.length;
-  for (let n = 0; n < coinSpots.length; n++){   // never two coins in one hiding place
-    if (!coins.some((o, j) => j !== i && o.spot === coinSpots[k])) break;
-    k = (k + 1) % coinSpots.length;
+  const pool = i < COIN_OPEN && openSpots.length > COIN_OPEN ? openSpots : coinSpots;
+  const c = coins[i]; let k = hash32(i*7919 + c.g*104729 + 17) % pool.length;
+  for (let n = 0; n < pool.length; n++){   // never two coins in one place
+    if (!coins.some((o, j) => j !== i && o.spot === pool[k])) break;
+    k = (k + 1) % pool.length;
   }
-  c.spot = coinSpots[k];
+  c.spot = pool[k];
   if (c.mesh){ c.mesh.position.set(c.spot.x, c.spot.y, c.spot.z); c.glint.position.copy(c.mesh.position); }
 }
 function wTexture(){
@@ -961,6 +962,15 @@ function buildCoins(){
   for (const [dx, dz] of [[-2.6,-2.1],[2.6,2.1],[-2.6,2.1],[2.6,-2.1]]) add(PAV.x + dx, PAV.z + dz);                    // pavilion corners
   for (const z of [12, 20, 28]) add(z === 20 ? -.85 : .85, z);                                                         // along the pier
   for (let k = 0; k < 24; k++){ const th = k/24*Math.PI*2 + .13, rr = lakeR(th) + 1.3; add(Math.cos(th)*rr, Math.sin(th)*rr); }   // among the shore stones
+  // open spots around the entrance: easy to see, so newcomers find their first coins quickly
+  for (let gx = -14; gx <= 14; gx += 3.5) for (let gz = 37; gz <= 63; gz += 3.5){
+    const h = hash32(Math.round(gx*10)*131 + Math.round(gz*10)*7 + 3);
+    const x = gx + ((h & 255)/255 - .5)*2, z = gz + (((h >> 8) & 255)/255 - .5)*2;
+    if (Math.hypot(x - player.x, z - player.z) < 3.2) continue;                                   // not right on the arrival spot
+    const th = Math.atan2(z, x); if (Math.hypot(x, z) < lakeR(th) + 2) continue;                  // dry land only
+    if (treeSpots.some(t => Math.hypot(x - t.x, z - t.z) < t.r*4.6 + .6)) continue;               // not inside a tree
+    const gy = groundAt(x, z); if (gy !== null) openSpots.push({ x, z, y: gy + .55, open: true });
+  }
   const tex = wTexture();
   const face = new THREE.MeshStandardMaterial({ map: tex, metalness: .35, roughness: .4, emissive: 0x6a4a08, emissiveIntensity: .55 });   // a soft gold even in backlight
   const rim = new THREE.MeshStandardMaterial({ color: 0xc9a043, metalness: .7, roughness: .3 });
@@ -986,8 +996,10 @@ function updateCoins(dt, t){
     c.mesh.rotation.y += dt*1.3;
     c.mesh.position.y = c.spot.y + Math.sin(t*1.8 + c.tw)*.05;
     // an occasional glint: just enough to be found
-    c.tw += dt; const ph = (c.tw % 7) / 7;
-    const a = ph > .92 ? Math.sin((ph - .92)/.08*Math.PI) : 0;
+    c.tw += dt;
+    let a;
+    if (c.spot.open){ const ph = (c.tw % 2.6) / 2.6; a = .3 + (ph > .8 ? Math.sin((ph - .8)/.2*Math.PI)*.7 : 0); }   // entrance coins glow steadily
+    else { const ph = (c.tw % 7) / 7; a = ph > .92 ? Math.sin((ph - .92)/.08*Math.PI) : 0; }
     c.glint.material.opacity = a*.9; c.glint.scale.setScalar(.25 + a*.9); c.glint.position.set(c.mesh.position.x, c.mesh.position.y + .05, c.mesh.position.z);
   }
   for (let i = coinBursts.length - 1; i >= 0; i--){
@@ -1514,7 +1526,7 @@ const cleanName = s => String(s ?? '').replace(BAD_CH, '').replace(/\s+/g, ' ').
 }
 
 // ---------------- people by the lake: link-based realtime (MQTT relay) + Claude room fallback ----------------
-const CAP = 50;
+const CAP = 100;
 const NET = {
   root: 'wisdomtooth/mkjs-lake/v1',
   brokers: ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'],
@@ -1826,7 +1838,7 @@ function frame(){
     camera.lookAt(lookV);
     }
     leaves(dt, t, player.x, player.z);
-    if (t - lastSendT > .2){ lastSendT = t; sendPresence(false); }
+    if (t - lastSendT > (others.size > 60 ? .4 : others.size > 30 ? .3 : .2)){ lastSendT = t; sendPresence(false); }   // fewer updates when the lake is crowded
   } else {
     // intro: a slow drifting view across the lake
     const s = Math.sin(t*.08);
@@ -1850,7 +1862,9 @@ function frame(){
     const ox = p.x, oz = p.z;
     p.x += (o.tx - p.x)*k; p.z += (o.tz - p.z)*k; p.y += (o.ty - p.y)*k;
     o.av.speed = Math.hypot(p.x-ox, p.z-oz) / Math.max(dt, 1e-3);
-    o.av.update(dt, t);
+    const dc = camera.position.distanceTo(p), far = others.size > 40 ? 70 : 95;
+    o.av.root.visible = dc < far; o.av.tag.visible = dc < (others.size > 40 ? 32 : 55);
+    if (o.av.root.visible) o.av.update(dt, t);
   }
   // charts bob on the still water
   { const want = Math.atan2(camera.position.x - chartRoot.position.x, camera.position.z - chartRoot.position.z);
