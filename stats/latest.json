@@ -1,8 +1,8 @@
 {
- "window_start": "2026-11-27T06:58:24.793Z",
- "window_end": "2026-11-27T10:58:00.056Z",
+ "window_start": "2026-11-27T10:58:16.560Z",
+ "window_end": "2026-11-27T14:58:00.045Z",
  "relay_connected_pct": 100,
- "page_opens": 0,
+ "page_opens": 2,
  "entered": 0,
  "distinct_nicknames": 0,
  "peak_concurrent": 0,
